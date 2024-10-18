@@ -30,7 +30,7 @@ README.md
 .vscode
 .idea
 
-src/example/
+donsoft/example/
 /coverage
 /src/example/
 
