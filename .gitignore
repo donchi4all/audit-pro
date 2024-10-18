@@ -1,0 +1,27 @@
+# Node modules
+node_modules/
+
+# Build artifacts
+dist/
+build/
+donsoft/
+# Log files
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE or Editor specific files
+.vscode/
+.idea/
+
+# TypeScript artifacts
+*.tsbuildinfo
+coverage/
+*.json

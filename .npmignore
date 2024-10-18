@@ -1,0 +1,37 @@
+# Ignore TypeScript and source files
+/src
+/**/*.ts
+/**/*.tsx
+
+# Ignore build files
+/dist
+/build
+/donsoft
+
+# Ignore local environment files
+.env
+.env.local
+.env.*.local
+
+# Ignore log files
+*.log
+
+# Ignore test files
+/tests
+/test/**/*.ts
+
+# Ignore documentation
+README.md
+
+# Ignore the npmignore file itself
+.npmignore
+
+# Ignore local configuration files
+.vscode
+.idea
+
+src/example/
+/coverage
+/src/example/
+
+*.json
