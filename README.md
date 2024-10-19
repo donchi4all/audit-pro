@@ -8,6 +8,7 @@
 - [Audit Pro](#audit-pro)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
+    - [Storage Dependencies](#storage-dependencies)
   - [Getting Started](#getting-started)
     - [Basic Setup](#basic-setup)
   - [Usage](#usage)
@@ -25,6 +26,9 @@
     - [ConsoleLogger](#consolelogger)
       - [Constructor](#constructor-1)
       - [Methods](#methods-1)
+    - [Available Log Levels](#available-log-levels)
+    - [Viewing Logs](#viewing-logs)
+  - [Customizing Console Logs](#customizing-console-logs)
   - [Examples](#examples)
   - [Testing](#testing)
   - [License](#license)
@@ -37,6 +41,23 @@ To install the `audit-pro` package, use npm:
 npm install audit-pro
 ```
 
+### Storage Dependencies
+
+Depending on which storage type you plan to use, you may need to install additional dependencies:
+
+- **Sequelize (for SQL databases):** If you intend to use Sequelize for SQL-based storage (e.g., MySQL, PostgreSQL), you must install `sequelize` and a corresponding SQL driver (e.g., `mysql2`, `pg`).
+
+  ```bash
+  npm install sequelize 
+  ```
+
+- **MongoDB:** If you are using MongoDB as your storage, install the `mongodb` package.
+
+  ```bash
+  npm install mongodb
+  ```
+
+
 ## Getting Started
 
 To start using **Audit Pro**, you need to create instances of the `AuditLogger`, the storage implementations (like `SequelizeStorage` or `FileStorage`), and the `ConsoleLogger`. 
@@ -44,10 +65,9 @@ To start using **Audit Pro**, you need to create instances of the `AuditLogger`,
 ### Basic Setup
 
 ```typescript
-import { AuditLogger } from 'audit-pro';
-import { ConsoleLogger } from 'audit-pro/src/ConsoleLogger';
-import { SequelizeStorage } from 'audit-pro/src/storage/SequelizeStorage';
-import { Sequelize } from 'sequelize';
+import { SequelizeStorage, LogLevel, AuditLog } from 'audit-pro';
+import { DataTypes, Model, ModelAttributes, Sequelize } from 'sequelize';
+
 
 // Setup your database connection
 const sequelizeInstance = new Sequelize('mysql://user:password@localhost:3306/audit', {
@@ -94,6 +114,7 @@ const logEvent: AuditLog = {
     timestamp: new Date(),
     metadata: { ipAddress: '192.168.1.1' },
     additionalInfo: 'extra information'
+    // more custom fields on the dynamic column
 }; 
 
 // Log the event directly using the storage instance
@@ -113,6 +134,7 @@ const log: AuditLog = {
   logLevel: LogLevel.INFO,
   timestamp: new Date(),
   metadata: { ipAddress: '192.168.1.1' },
+  //any additional fields
 };
 
 // Log the event
@@ -172,6 +194,7 @@ new AuditLogger(storage: StorageInterface, logger: ConsoleLogger)
 
 - `logEvent(log: AuditLog): Promise<void>`
 - `fetchLogs(filter: object): Promise<AuditLog[]>`
+- `fetchLog(filter: object): Promise<AuditLog>`
 - `updateLog(id: string, updates: object): Promise<void>`
 - `deleteLog(id: string): Promise<void>`
 - `countLogs(filter: object): Promise<number>`
@@ -204,15 +227,58 @@ new ConsoleLogger(isEnabled: boolean)
 - `logEventToConsole(log: AuditLog): void`
 - `colorize(message: string, color: Color): string`
 
+### Available Log Levels
+
+- **LogLevel.INFO**
+- **LogLevel.WARN**
+- **LogLevel.ERROR**
+- **LogLevel.DEBUG**
+- **LogLevel.CUSTOM**
+
+### Viewing Logs
+
+You can use the `LogViewer` class to fetch and display logs from any storage implementation. Here’s an example:
+
+```typescript
+import { LogViewer, ConsoleLogger } from 'audit-pro';
+
+const consoleLogger = new ConsoleLogger(true); // Enable colorized console logging
+
+// Assuming you have configured one or more storages
+const logViewer = new LogViewer([storage], consoleLogger);
+
+// View logs based on filters (e.g., userId)
+logViewer.viewLogs({ userId: 'user123' });
+```
+
+## Customizing Console Logs
+
+Audit-Pro allows you to customize the console output with different colors:
+
+```typescript
+import { ConsoleLogger } from 'audit-pro';
+
+// Enable colorized logs
+const consoleLogger = new ConsoleLogger(true);
+
+// Log events to the console
+consoleLogger.logEventToConsole({
+    id: 'unique-log-id',
+    userId: 'user123',
+    action: 'User Login',
+    logLevel: LogLevel.INFO,
+    timestamp: new Date(),
+    metadata: { ipAddress: '192.168.1.1' },
+});
+```
+
 ## Examples
 
 Here’s a simple example of how to use **Audit Pro** in an Express.js application.
 
 ```typescript
 import express from 'express';
-import { AuditLogger } from 'audit-pro';
-import { ConsoleLogger } from 'audit-pro/src/ConsoleLogger';
-import { SequelizeStorage } from 'audit-pro/src/storage/SequelizeStorage';
+import { AuditLogger, ConsoleLogger, SequelizeStorage } from 'audit-pro';
 import { Sequelize } from 'sequelize';
 
 const app = express();

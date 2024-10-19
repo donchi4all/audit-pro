@@ -40,7 +40,6 @@ describe('SequelizeStorage', () => {
 
         await sequelizeStorage.logEvent(logEvent);
         const logs = await sequelizeStorage.fetchAllLogs();
-
         expect(logs.length).toBe(1); // Expect one log after insertion
         expect(logs[0].userId).toBe(logEvent.userId);
         expect(logs[0].action).toBe(logEvent.action);
