@@ -1,5 +1,5 @@
 import { Sequelize, DataTypes, Model, ModelAttributes, ModelStatic, AssociationOptions } from 'sequelize';
-import { AuditLog, StorageInterface } from '../interfaces';
+import { AuditLogInterface, StorageInterface } from '../interfaces';
 
 interface AssociationConfig {
     relationship: 'belongsTo' | 'hasMany' | 'hasOne' | 'belongsToMany';
@@ -8,18 +8,18 @@ interface AssociationConfig {
 }
 export class SequelizeStorage implements StorageInterface {
     private sequelize: Sequelize;
-    private models: { [key: string]: ModelStatic<Model<AuditLog>> } = {};
+    private models: { [key: string]: ModelStatic<Model<AuditLogInterface>> } = {};
     private tableName: string;
-    private dynamicColumns: ModelAttributes<Model<AuditLog>, AuditLog>;
+    private dynamicColumns: ModelAttributes<Model<AuditLogInterface>, AuditLogInterface>;
 
     constructor(sequelize: Sequelize, tableName: string,
-        dynamicColumns: Partial<ModelAttributes<Model<AuditLog>, AuditLog>>,
+        dynamicColumns: Partial<ModelAttributes<Model<AuditLogInterface>, AuditLogInterface>>,
         associations: { [key: string]: AssociationConfig } = {}
     ) {
         this.sequelize = sequelize;
         this.tableName = tableName;
 
-        const defaultColumns: ModelAttributes<Model<AuditLog>, AuditLog> = {
+        const defaultColumns: ModelAttributes<Model<AuditLogInterface>, AuditLogInterface> = {
             id: {
                 type: DataTypes.UUID,
                 primaryKey: true,
@@ -47,7 +47,7 @@ export class SequelizeStorage implements StorageInterface {
         this.dynamicColumns = {
             ...defaultColumns,
             ...Object.fromEntries(Object.entries(dynamicColumns).filter(([, value]) => value !== undefined)),
-        } as ModelAttributes<Model<AuditLog>, AuditLog>;
+        } as ModelAttributes<Model<AuditLogInterface>, AuditLogInterface>;
 
         this.getModel(); // Define the model during initialization
         this.defineAssociations(associations); // Define associations during initialization
@@ -57,11 +57,11 @@ export class SequelizeStorage implements StorageInterface {
         return this.tableName;
     }
 
-    private defineModel(): ModelStatic<Model<AuditLog>> {
-        return this.sequelize.define<Model<AuditLog>>(this.tableName, this.dynamicColumns, { freezeTableName: true });
+    private defineModel(): ModelStatic<Model<AuditLogInterface>> {
+        return this.sequelize.define<Model<AuditLogInterface>>(this.tableName, this.dynamicColumns, { freezeTableName: true });
     }
 
-    private getModel(): ModelStatic<Model<AuditLog>> {
+    private getModel(): ModelStatic<Model<AuditLogInterface>> {
         if (!this.models[this.tableName]) {
             this.models[this.tableName] = this.defineModel();
         }
@@ -96,7 +96,7 @@ export class SequelizeStorage implements StorageInterface {
 
 
     // Public getter to expose the model instance
-    public getModelInstance(): ModelStatic<Model<AuditLog>> {
+    public getModelInstance(): ModelStatic<Model<AuditLogInterface>> {
         return this.getModel();
     }
 
@@ -105,27 +105,27 @@ export class SequelizeStorage implements StorageInterface {
         await model.sync(); // Ensure the table is created
     }
 
-    public async logEvent(event: AuditLog): Promise<void> {
+    public async logEvent(event: AuditLogInterface): Promise<void> {
         const model = this.getModel();
         await model.sync(); // Sync the table before logging
         await model.create(event);
     }
 
-    public async fetchLogs(filter: any): Promise<AuditLog[]> {
+    public async fetchLogs(filter: any): Promise<AuditLogInterface[]> {
         const model = this.getModel();
         await model.sync(); // Sync the table before querying
         const logs = await model.findAll({ where: filter });
-        return logs.map(log => log.get({ plain: true })) as AuditLog[];
+        return logs.map(log => log.get({ plain: true })) as AuditLogInterface[];
     }
 
-    public async fetchLog(filter: any): Promise<AuditLog | null> {
+    public async fetchLog(filter: any): Promise<AuditLogInterface | null> {
         const model = this.getModel();
         await model.sync(); // Sync the table before querying
         const logEntry = await model.findOne({ where: filter });
-        return logEntry ? logEntry.get({ plain: true }) as AuditLog : null; // Return log entry or null
+        return logEntry ? logEntry.get({ plain: true }) as AuditLogInterface : null; // Return log entry or null
     }
 
-    public async updateLog(id: string, updates: Partial<AuditLog>): Promise<void> {
+    public async updateLog(id: string, updates: Partial<AuditLogInterface>): Promise<void> {
         const model = this.getModel();
         await model.sync(); // Sync the table before updating
         await model.update(updates, { where: { id } });
@@ -137,11 +137,11 @@ export class SequelizeStorage implements StorageInterface {
         await model.destroy({ where: { id } });
     }
 
-    public async fetchAllLogs(): Promise<AuditLog[]> {
+    public async fetchAllLogs(): Promise<AuditLogInterface[]> {
         const model = this.getModel();
         await model.sync(); // Sync the table before fetching all logs
         const logs = await model.findAll();
-        return logs.map(log => log.get({ plain: true })) as AuditLog[];
+        return logs.map(log => log.get({ plain: true })) as AuditLogInterface[];
     }
 
     public async countLogs(filter: any): Promise<number> {
@@ -158,7 +158,7 @@ export class SequelizeStorage implements StorageInterface {
         where?: Record<string, any>;
         include?: Array<{ association: string; required?: boolean; attributes?: string[] }>; // Make sure to define the type correctly
         order?: [string, 'asc' | 'desc'][];
-    }): Promise<AuditLog[]> {
+    }): Promise<AuditLogInterface[]> {
         const model = this.getModel();
         await model.sync(); // Sync the table before querying
 
@@ -175,7 +175,7 @@ export class SequelizeStorage implements StorageInterface {
             order: order.map(([field, direction]) => [field, direction.toUpperCase()]) // Convert to Sequelize order format
         });
 
-        return logs.map(log => log.get({ plain: true })) as AuditLog[];
+        return logs.map(log => log.get({ plain: true })) as AuditLogInterface[];
     }
 
 }

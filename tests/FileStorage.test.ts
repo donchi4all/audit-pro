@@ -1,12 +1,12 @@
 import { FileStorage } from '../src/storage/FileStorage'; // Adjust the path as necessary
 import { LogLevel } from '../src/LogLevel';
-import { AuditLog } from '../src/interfaces';
+import { AuditLogInterface } from '../src/interfaces';
 
 describe('FileStorage', () => {
     const fileStorage = new FileStorage('logs.json', {});
 
     it('should log an event successfully', async () => {
-        const logEvent: AuditLog = {
+        const logEvent: AuditLogInterface = {
             id: 'test-log-id',
             userId: 'testUser',
             action: 'Test Action',

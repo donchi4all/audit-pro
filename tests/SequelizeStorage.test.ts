@@ -1,6 +1,6 @@
 import { Sequelize } from 'sequelize';
 import { SequelizeStorage } from '../src/storage/SequelizeStorage';
-import { AuditLog } from '../src/interfaces';
+import { AuditLogInterface } from '../src/interfaces';
 import { LogLevel } from '../src/LogLevel';
 
 describe('SequelizeStorage', () => {
@@ -30,7 +30,7 @@ describe('SequelizeStorage', () => {
 
 
     it('should log an event correctly', async () => {
-        const logEvent: AuditLog = {
+        const logEvent: AuditLogInterface = {
             userId: 'testUser',
             action: 'testAction',
             logLevel: LogLevel.INFO,
@@ -45,7 +45,7 @@ describe('SequelizeStorage', () => {
     });
 
     it('should delete a log entry', async () => {
-        const logEvent: AuditLog = {
+        const logEvent: AuditLogInterface = {
             userId: 'testUser',
             action: 'testAction',
             logLevel: LogLevel.INFO,
@@ -91,7 +91,7 @@ describe('SequelizeStorage', () => {
     });
 
     it('should fetch logs with filters', async () => {
-        const logEvent: AuditLog = {
+        const logEvent: AuditLogInterface = {
             userId: 'testUser',
             action: 'testAction',
             logLevel: LogLevel.INFO,
@@ -106,7 +106,7 @@ describe('SequelizeStorage', () => {
     });
 
     it('should delete a log entry', async () => {
-        const logEvent: AuditLog = {
+        const logEvent: AuditLogInterface = {
             userId: 'testUser',
             action: 'testAction',
             logLevel: LogLevel.INFO,

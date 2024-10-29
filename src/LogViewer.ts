@@ -1,5 +1,5 @@
 import { ConsoleLogger } from './ConsoleLogger';
-import { AuditLog, StorageInterface } from './interfaces';
+import { AuditLogInterface, StorageInterface } from './interfaces';
 
 export class LogViewer {
     private storages: StorageInterface[]; // Storages may have tableName property
@@ -10,8 +10,8 @@ export class LogViewer {
         this.consoleLogger = consoleLogger;
     }
 
-    public async viewLogs(filter: any): Promise<AuditLog[]> {
-        let allLogs: AuditLog[] = [];
+    public async viewLogs(filter: any): Promise<AuditLogInterface[]> {
+        let allLogs: AuditLogInterface[] = [];
 
         for (const storage of this.storages) {
             const logs = await storage.fetchLogs(filter);

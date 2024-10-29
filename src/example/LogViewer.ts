@@ -3,7 +3,7 @@ import { FileStorage } from "../storage/FileStorage";
 import { SequelizeStorage } from "../storage/SequelizeStorage";
 import { LogViewer } from "../LogViewer";
 import { LogLevel } from "../LogLevel";
-import { AuditLog } from "../interfaces";
+import { AuditLogInterface } from "../interfaces";
 import { ConsoleLogger, Color } from "..";
 
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -40,7 +40,7 @@ const customColumns = {
 const consoleLogger2 = new ConsoleLogger(true, customColumns);
 
 // Create sample audit log events
-const logs: AuditLog[] = [
+const logs: AuditLogInterface[] = [
   {
     id: 'unique-log-id1',
     userId: 'user1234',

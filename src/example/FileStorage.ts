@@ -1,4 +1,4 @@
-import { AuditLog } from "../interfaces";
+import { AuditLogInterface } from "../interfaces";
 import { LogLevel } from "../LogLevel";
 import { FileStorage } from "../storage/FileStorage";
 
@@ -9,7 +9,7 @@ const dynamicColumns = {
 const fileStorage = new FileStorage('logs.json', dynamicColumns);
 
 // Logging an event
-const logEvent: AuditLog = {
+const logEvent: AuditLogInterface = {
     id: 'unique-log-id3',
     userId: 'user1234',
     action: 'User Login',

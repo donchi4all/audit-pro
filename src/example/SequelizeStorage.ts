@@ -1,5 +1,5 @@
 import { DataTypes, Model, ModelAttributes, Sequelize } from 'sequelize';
-import { AuditLog } from '../interfaces';
+import { AuditLogInterface } from '../interfaces';
 import { SequelizeStorage } from '../storage/SequelizeStorage';
 import { LogLevel } from '../LogLevel';
 
@@ -10,7 +10,7 @@ const sequelize = new Sequelize('mysql://root:password@localhost:3306/audit', {
 });
 
 // Define dynamic columns (if any)
-const dynamicColumns: Partial<ModelAttributes<Model<AuditLog>, AuditLog>> = {
+const dynamicColumns: Partial<ModelAttributes<Model<AuditLogInterface>, AuditLogInterface>> = {
     additionalInfo: {
         type: DataTypes.STRING,
         allowNull: true,
@@ -21,7 +21,7 @@ const dynamicColumns: Partial<ModelAttributes<Model<AuditLog>, AuditLog>> = {
 const storage = new SequelizeStorage(sequelize, 'AuditLogs', dynamicColumns);
 
 // Example of logging an event
-const logEvent: AuditLog = {
+const logEvent: AuditLogInterface = {
     id: 'unique-log-id',
     userId: 'user123',
     action: 'User Login',
@@ -61,7 +61,7 @@ async function runStorageOperations() {
         const logCount = await storage.countLogs({ userId: 'user123' });
         console.log(`Total logs for user123: ${logCount}`);
 
-        const findAllLogs: AuditLog[] = await storage.findAll({
+        const findAllLogs: AuditLogInterface[] = await storage.findAll({
             where: { userId: 'user123', logLevel: LogLevel.INFO }, // Filter criteria
             include: [
                 { association: 'user', required: true }, // Fetch associated User

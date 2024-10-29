@@ -1,5 +1,5 @@
 import { DataTypes, Model, Sequelize } from 'sequelize';
-import { AuditLog } from '../interfaces';
+import { AuditLogInterface } from '../interfaces';
 import { LogLevel } from '../LogLevel';
 import { SequelizeStorage } from '../storage/SequelizeStorage';
 
@@ -101,7 +101,7 @@ const dynamicColumns = {
 };
 
 // Create an instance of SequelizeStorage with associations
-const auditStorage = new SequelizeStorage(sequelize, 'AuditLog', dynamicColumns, {
+const auditStorage = new SequelizeStorage(sequelize, 'AuditLogInterface', dynamicColumns, {
     user: {
         relationship: 'belongsTo',
         targetModel: User,
@@ -122,7 +122,7 @@ const auditStorage = new SequelizeStorage(sequelize, 'AuditLog', dynamicColumns,
     await sequelize.sync({ force: true }); // Be cautious with force: true in production!
 
     // Logging an event
-    const event: AuditLog = {
+    const event: AuditLogInterface = {
         userId: 'some-user-id',
         action: 'LOGIN',
         logLevel: LogLevel.INFO,

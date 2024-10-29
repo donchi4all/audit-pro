@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs';
-import { StorageInterface, AuditLog } from '../interfaces';
+import { StorageInterface, AuditLogInterface } from '../interfaces';
 
 export class FileStorage implements StorageInterface {
     private filePath: string;
@@ -19,7 +19,7 @@ export class FileStorage implements StorageInterface {
     }
 
     // Log event with dynamic columns
-    public async logEvent(event: AuditLog): Promise<void> {
+    public async logEvent(event: AuditLogInterface): Promise<void> {
         const logs = await this.readLogs();
         const dynamicEvent = { ...event, ...this.dynamicColumns }; // Merge event and dynamic columns
         logs.push(dynamicEvent);
@@ -27,7 +27,7 @@ export class FileStorage implements StorageInterface {
     }
 
     // Fetch logs by applying filters including dynamic columns
-    public async fetchLogs(filter: any): Promise<AuditLog[]> {
+    public async fetchLogs(filter: any): Promise<AuditLogInterface[]> {
         const logs = await this.readLogs();
         return logs.filter((log) =>
             Object.keys(filter).every((key) => log[key] === filter[key])
@@ -35,13 +35,13 @@ export class FileStorage implements StorageInterface {
     }
 
     // Fetch logs by applying filters including dynamic columns
-    public async fetchLog(filter: any): Promise<AuditLog> {
+    public async fetchLog(filter: any): Promise<AuditLogInterface> {
         const logs = await this.readLogs();
         return logs[0];
     }
 
     // Fetch all logs
-    public async fetchAllLogs(): Promise<AuditLog[]> {
+    public async fetchAllLogs(): Promise<AuditLogInterface[]> {
         return await this.readLogs();
     }
 
@@ -52,7 +52,7 @@ export class FileStorage implements StorageInterface {
     }
 
     // Update logs with dynamic columns
-    public async updateLog(id: string, updates: Partial<AuditLog>): Promise<void> {
+    public async updateLog(id: string, updates: Partial<AuditLogInterface>): Promise<void> {
         const logs = await this.readLogs();
         const index = logs.findIndex((log) => log.id === id);
         if (index !== -1) {
@@ -69,7 +69,7 @@ export class FileStorage implements StorageInterface {
     }
 
     // Read logs from file
-    private async readLogs(): Promise<AuditLog[]> {
+    private async readLogs(): Promise<AuditLogInterface[]> {
         try {
             const content = await fs.readFile(this.filePath, 'utf-8');
             return JSON.parse(content);
@@ -79,7 +79,7 @@ export class FileStorage implements StorageInterface {
     }
 
     // Write logs to file and ensure the JSON structure is valid
-    private async writeLogs(logs: AuditLog[]): Promise<void> {
+    private async writeLogs(logs: AuditLogInterface[]): Promise<void> {
         if (logs.length === 0) {
             // Don't write anything if the logs array is empty
             return;

@@ -1,5 +1,5 @@
 import { ConsoleLogger } from "./ConsoleLogger";
-import { AuditLog, StorageInterface } from "./interfaces";
+import { AuditLogInterface, StorageInterface } from "./interfaces";
 
 
 export class AuditLogger {
@@ -15,7 +15,7 @@ export class AuditLogger {
      * Logs an event to the configured storage system.
      * @param log - The audit log object containing details of the event.
      */
-    public async logEvent(log: AuditLog): Promise<void> {
+    public async logEvent(log: AuditLogInterface): Promise<void> {
         try {
             // Log event to the storage
             await this.storage.logEvent(log);
@@ -33,7 +33,7 @@ export class AuditLogger {
      * Fetches logs based on filters from the storage.
      * @param filter - Filter object to narrow down logs (e.g., by userId or action).
      */
-    public async fetchLogs(filter: any): Promise<AuditLog[]> {
+    public async fetchLogs(filter: any): Promise<AuditLogInterface[]> {
         try {
             return await this.storage.fetchLogs(filter);
         } catch (error) {
@@ -47,7 +47,7 @@ export class AuditLogger {
      * @param id - Unique identifier for the log to be updated.
      * @param updates - Partial object containing the updates to be applied.
      */
-    public async updateLog(id: string, updates: Partial<AuditLog>): Promise<void> {
+    public async updateLog(id: string, updates: Partial<AuditLogInterface>): Promise<void> {
         try {
             await this.storage.updateLog(id, updates);
         } catch (error) {

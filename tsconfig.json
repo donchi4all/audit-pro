@@ -11,6 +11,7 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "skipLibCheck": true
+    
   },
   "exclude": [
     "node_modules",

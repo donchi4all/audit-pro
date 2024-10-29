@@ -1,7 +1,7 @@
 
 import { LogLevel } from './LogLevel';
 
-export interface AuditLog {
+export interface AuditLogInterface {
     id?: string;
     action: string;
     userId: string;
@@ -13,13 +13,13 @@ export interface AuditLog {
 
 export interface StorageInterface {
     getTableName(): string;
-    logEvent(event: AuditLog): Promise<void>
-    fetchLogs(filter: any): Promise<AuditLog[]>;
-    fetchLog(filter: any): Promise<AuditLog | null>;
-    updateLog(id: string, updates: Partial<AuditLog>): Promise<void>;
+    logEvent(event: AuditLogInterface): Promise<void>
+    fetchLogs(filter: any): Promise<AuditLogInterface[]>;
+    fetchLog(filter: any): Promise<AuditLogInterface | null>;
+    updateLog(id: string, updates: Partial<AuditLogInterface>): Promise<void>;
     deleteLog(id: string): Promise<void>;
     countLogs(filter: any): Promise<number>;
-    findAll({ where, include, order }: { where?: Record<string, any>; include?: Array<{ association: string; required?: boolean; attributes?: string[] }>; order?: [string, 'asc' | 'desc'][]; }): Promise<AuditLog[]>
+    findAll({ where, include, order }: { where?: Record<string, any>; include?: Array<{ association: string; required?: boolean; attributes?: string[] }>; order?: [string, 'asc' | 'desc'][]; }): Promise<AuditLogInterface[]>
 }
 
 export interface AuditTrailConfig {

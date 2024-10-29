@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { AuditLog, StorageInterface } from '../interfaces';
+import { AuditLogInterface, StorageInterface } from '../interfaces';
 
-interface MongoAuditLog extends Document, Omit<AuditLog, 'id'> { }
+interface MongoAuditLog extends Document, Omit<AuditLogInterface, 'id'> { }
 
 const createMongoModel = (tableName: string, dynamicColumns: Record<string, any>) => {
     const schemaDefinition = {
@@ -42,24 +42,24 @@ export class MongoStorage implements StorageInterface {
         return this.getModel();
     }
 
-    public async logEvent(event: AuditLog): Promise<void> {
+    public async logEvent(event: AuditLogInterface): Promise<void> {
         const model = this.getModel();
         const logEntry = new model(event);
         await logEntry.save();
     }
 
-    public async fetchLogs(filter: any): Promise<AuditLog[]> {
+    public async fetchLogs(filter: any): Promise<AuditLogInterface[]> {
         const model = this.getModel();
         const logs = await model.find(filter).exec();
-        return logs.map(log => log.toObject() as unknown as AuditLog);
+        return logs.map(log => log.toObject() as unknown as AuditLogInterface);
     }
 
-    public async fetchLog(filter: any): Promise<AuditLog | null> {
+    public async fetchLog(filter: any): Promise<AuditLogInterface | null> {
         const model = this.getModel();
         return await model.findOne(filter);
     }
 
-    public async updateLog(id: string, updates: Partial<AuditLog>): Promise<void> {
+    public async updateLog(id: string, updates: Partial<AuditLogInterface>): Promise<void> {
         const model = this.getModel();
         await model.updateOne({ _id: id }, updates);
     }
@@ -70,10 +70,10 @@ export class MongoStorage implements StorageInterface {
     }
 
 
-    public async fetchAllLogs(): Promise<AuditLog[]> {
+    public async fetchAllLogs(): Promise<AuditLogInterface[]> {
         const model = this.getModel();
         const logs = await model.find().exec();
-        return logs.map(log => log.toObject() as unknown as AuditLog);
+        return logs.map(log => log.toObject() as unknown as AuditLogInterface);
     }
 
     public async countLogs(filter: any): Promise<number> {
@@ -97,7 +97,7 @@ export class MongoStorage implements StorageInterface {
         where?: Record<string, any>;
         include?: Array<{ association: string; required?: boolean; attributes?: string[] }>; // Updated to accept complex include structure
         order?: [string, 'asc' | 'desc'][];
-    }): Promise<AuditLog[]> {
+    }): Promise<AuditLogInterface[]> {
         const model = this.getModel();
         const query = model.find(where);
 
@@ -118,8 +118,8 @@ export class MongoStorage implements StorageInterface {
             query.sort(sortOptions);
         }
 
-        // Use `as AuditLog[]` to assert the type
-        return query.lean().exec() as unknown as Promise<AuditLog[]>;
+        // Use `as AuditLogInterface[]` to assert the type
+        return query.lean().exec() as unknown as Promise<AuditLogInterface[]>;
     }
 
 }

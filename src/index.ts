@@ -5,4 +5,4 @@ export { LogViewer } from './LogViewer';
 export { MongoStorage } from './storage/MongoStorage';
 export { Color, ConsoleLogger } from './ConsoleLogger';
 export { AuditLogger } from './AuditLogger';
-export { AuditLog } from "./interfaces";
+export { AuditLogInterface } from "./interfaces";

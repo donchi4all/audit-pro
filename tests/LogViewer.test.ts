@@ -3,7 +3,7 @@ import { FileStorage } from '../src/storage/FileStorage';
 import { SequelizeStorage } from '../src/storage/SequelizeStorage';
 import { LogViewer } from '../src/LogViewer';
 import { LogLevel } from '../src/LogLevel';
-import { AuditLog } from '../src/interfaces';
+import { AuditLogInterface } from '../src/interfaces';
 import { ConsoleLogger, Color } from '../src/ConsoleLogger';
 
 
@@ -37,7 +37,7 @@ describe('LogViewer', () => {
     });
 
     it('should fetch logs from both storages and log them to console', async () => {
-        const mockLogs: AuditLog[] = [
+        const mockLogs: AuditLogInterface[] = [
             {
                 id: 'unique-log-id1',
                 userId: 'user1234',

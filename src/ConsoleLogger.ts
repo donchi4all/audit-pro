@@ -1,5 +1,5 @@
 import { LogLevel } from './LogLevel';
-import { AuditLog } from './interfaces';
+import { AuditLogInterface } from './interfaces';
 import kleur from 'kleur'; // Import kleur directly
 
 // Define an enum for supported color names
@@ -46,7 +46,7 @@ export class ConsoleLogger {
         return kleur[color](text); // Use kleur for coloring
     }
 
-    public logEventToConsole(event: AuditLog): void {
+    public logEventToConsole(event: AuditLogInterface): void {
         if (!this.isEnabled) return;
 
         const logLevelConfig = this.columns[event.logLevel] || this.defaultColumns[event.logLevel];

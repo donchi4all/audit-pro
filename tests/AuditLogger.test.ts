@@ -1,6 +1,6 @@
 import { AuditLogger } from '../src/AuditLogger';
 import { ConsoleLogger } from '../src/ConsoleLogger';
-import { StorageInterface, AuditLog } from '../src/interfaces';
+import { StorageInterface, AuditLogInterface } from '../src/interfaces';
 import { LogLevel } from '../src/LogLevel';
 
 const mockStorage: jest.Mocked<StorageInterface> = {
@@ -11,6 +11,7 @@ const mockStorage: jest.Mocked<StorageInterface> = {
     deleteLog: jest.fn(),
     countLogs: jest.fn(),
     getTableName: jest.fn(),
+    findAll: jest.fn(),
 };
 
 // Mocking ConsoleLogger without the columns properties
@@ -27,7 +28,7 @@ describe('AuditLogger', () => {
     let auditLogger: AuditLogger;
     let mockConsoleLogger: jest.Mocked<ConsoleLogger>;
 
-    const testLog: AuditLog = {
+    const testLog: AuditLogInterface = {
         id: 'unique-log-id',
         userId: 'user123',
         action: 'User Login',
@@ -66,7 +67,7 @@ describe('AuditLogger', () => {
     });
 
     test('should fetch logs from storage with a filter', async () => {
-        const mockLogs: AuditLog[] = [testLog];
+        const mockLogs: AuditLogInterface[] = [testLog];
         mockStorage.fetchLogs.mockResolvedValue(mockLogs);
 
         const logs = await auditLogger.fetchLogs({ userId: 'user123' });

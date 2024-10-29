@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { MongoStorage } from '../src/storage/MongoStorage';
-import { AuditLog } from '../src/interfaces';
+import { AuditLogInterface } from '../src/interfaces';
 import { LogLevel } from '../src/LogLevel';
 
 describe('MongoStorage', () => {
@@ -34,7 +34,7 @@ describe('MongoStorage', () => {
     });
 
     it('should log an event successfully', async () => {
-        const logEvent: AuditLog = {
+        const logEvent: AuditLogInterface = {
             userId: 'user123',
             action: 'CREATE',
             logLevel: LogLevel.INFO,
@@ -50,14 +50,14 @@ describe('MongoStorage', () => {
     });
 
     it('should fetch logs with filters correctly', async () => {
-        const logEvent1: AuditLog = {
+        const logEvent1: AuditLogInterface = {
             userId: 'user123',
             action: 'CREATE',
             logLevel: LogLevel.INFO,
             metadata: { detail: 'Created a new resource' },
         };
 
-        const logEvent2: AuditLog = {
+        const logEvent2: AuditLogInterface = {
             userId: 'user456',
             action: 'DELETE',
             logLevel: LogLevel.ERROR,
@@ -73,7 +73,7 @@ describe('MongoStorage', () => {
     });
 
     it('should update a log entry', async () => {
-        const logEvent: AuditLog = {
+        const logEvent: AuditLogInterface = {
             userId: 'user123',
             action: 'CREATE',
             logLevel: LogLevel.INFO,
@@ -92,7 +92,7 @@ describe('MongoStorage', () => {
     });
 
     it('should log an event correctly', async () => {
-        const logEvent: AuditLog = {
+        const logEvent: AuditLogInterface = {
             userId: 'testUser',
             action: 'testAction',
             logLevel: LogLevel.INFO,
@@ -107,7 +107,7 @@ describe('MongoStorage', () => {
     
 
     it('should delete a log entry', async () => {
-        const logEvent: AuditLog = {
+        const logEvent: AuditLogInterface = {
             userId: 'user123',
             action: 'CREATE',
             logLevel: LogLevel.INFO,
@@ -125,14 +125,14 @@ describe('MongoStorage', () => {
     });
 
     it('should count logs correctly', async () => {
-        const logEvent1: AuditLog = {
+        const logEvent1: AuditLogInterface = {
             userId: 'user123',
             action: 'CREATE',
             logLevel: LogLevel.INFO,
             metadata: { detail: 'Created a new resource' },
         };
 
-        const logEvent2: AuditLog = {
+        const logEvent2: AuditLogInterface = {
             userId: 'user456',
             action: 'DELETE',
             logLevel: LogLevel.ERROR,

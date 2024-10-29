@@ -65,7 +65,7 @@ To start using **Audit Pro**, you need to create instances of the `AuditLogger`,
 ### Basic Setup
 
 ```typescript
-import { SequelizeStorage, LogLevel, AuditLog } from 'audit-pro';
+import { SequelizeStorage, LogLevel, AuditLogInterface } from 'audit-pro';
 import { DataTypes, Model, ModelAttributes, Sequelize } from 'sequelize';
 
 
@@ -85,7 +85,7 @@ OR
 
 Using Storage Instance to Log Events
 // Define dynamic columns (if any)
-const dynamicColumns: Partial<ModelAttributes<Model<AuditLog>, AuditLog>> = {
+const dynamicColumns: Partial<ModelAttributes<Model<AuditLogInterface>, AuditLogInterface>> = {
     additionalInfo: {
         type: DataTypes.STRING,
         allowNull: true,
@@ -106,7 +106,7 @@ You can also directly use the storage instance to log events. This is particular
 const storage = new SequelizeStorage(sequelizeInstance, 'AuditLogs', dynamicColumns);
 
 // Example of logging an event
-const logEvent: AuditLog = {
+const logEvent: AuditLogInterface = {
     id: 'unique-log-id',
     userId: 'user123',
     action: 'User Login',
@@ -124,10 +124,10 @@ await storage.logEvent(logEvent);
 
 ### Logging Events
 
-To log an event, use the `logEvent` method. The method accepts an `AuditLog` object.
+To log an event, use the `logEvent` method. The method accepts an `AuditLogInterface` object.
 
 ```typescript
-const log: AuditLog = {
+const log: AuditLogInterface = {
   id: 'unique-log-id',
   userId: 'user123',
   action: 'User Login',
@@ -192,9 +192,9 @@ new AuditLogger(storage: StorageInterface, logger: ConsoleLogger)
 
 #### Methods
 
-- `logEvent(log: AuditLog): Promise<void>`
-- `fetchLogs(filter: object): Promise<AuditLog[]>`
-- `fetchLog(filter: object): Promise<AuditLog>`
+- `logEvent(log: AuditLogInterface): Promise<void>`
+- `fetchLogs(filter: object): Promise<AuditLogInterface[]>`
+- `fetchLog(filter: object): Promise<AuditLogInterface>`
 - `updateLog(id: string, updates: object): Promise<void>`
 - `deleteLog(id: string): Promise<void>`
 - `countLogs(filter: object): Promise<number>`
@@ -203,8 +203,8 @@ new AuditLogger(storage: StorageInterface, logger: ConsoleLogger)
 
 Implement your storage interface by extending `StorageInterface`. The main methods to implement are:
 
-- `logEvent(log: AuditLog): Promise<void>`
-- `fetchLogs(filter: object): Promise<AuditLog[]>`
+- `logEvent(log: AuditLogInterface): Promise<void>`
+- `fetchLogs(filter: object): Promise<AuditLogInterface[]>`
 - `updateLog(id: string, updates: object): Promise<void>`
 - `deleteLog(id: string): Promise<void>`
 - `countLogs(filter: object): Promise<number>`
@@ -224,7 +224,7 @@ new ConsoleLogger(isEnabled: boolean)
 #### Methods
 
 - `getIsEnabled(): boolean`
-- `logEventToConsole(log: AuditLog): void`
+- `logEventToConsole(log: AuditLogInterface): void`
 - `colorize(message: string, color: Color): string`
 
 ### Available Log Levels
@@ -291,7 +291,7 @@ const auditLogger = new AuditLogger(storage, logger);
 
 app.post('/login', async (req, res) => {
   // Simulating a login action
-  const log: AuditLog = {
+  const log: AuditLogInterface = {
     id: 'unique-log-id',
     userId: req.body.userId,
     action: 'User Login',
