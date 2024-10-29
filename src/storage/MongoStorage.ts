@@ -8,7 +8,6 @@ const createMongoModel = (tableName: string, dynamicColumns: Record<string, any>
         userId: { type: String, required: true },
         action: { type: String, required: true },
         logLevel: { type: String, required: true },
-        timestamp: { type: Date, required: true },
         metadata: { type: Schema.Types.Mixed, required: false },
         ...dynamicColumns,
     };
@@ -38,6 +37,10 @@ export class MongoStorage implements StorageInterface {
         return this.tableName;
     }
 
+    // Public getter to expose the model instance
+    public getModelInstance(): mongoose.Model<MongoAuditLog> {
+        return this.getModel();
+    }
 
     public async logEvent(event: AuditLog): Promise<void> {
         const model = this.getModel();
@@ -84,4 +87,39 @@ export class MongoStorage implements StorageInterface {
         }
         return this.models[this.tableName];
     }
+
+
+    public async findAll({
+        where = {},
+        include = [],
+        order = []
+    }: {
+        where?: Record<string, any>;
+        include?: Array<{ association: string; required?: boolean; attributes?: string[] }>; // Updated to accept complex include structure
+        order?: [string, 'asc' | 'desc'][];
+    }): Promise<AuditLog[]> {
+        const model = this.getModel();
+        const query = model.find(where);
+
+        // Add includes (populate related documents)
+        include.forEach(item => {
+            const { association, required = false, attributes } = item;
+            query.populate({
+                path: association,
+                model: association, // Ensure the model name matches the association name
+                select: attributes ? attributes.join(' ') : undefined, // Include specific attributes if provided
+                match: required ? {} : undefined, // Add any match condition if required
+            });
+        });
+
+        // Add ordering
+        if (order.length > 0) {
+            const sortOptions = Object.fromEntries(order);
+            query.sort(sortOptions);
+        }
+
+        // Use `as AuditLog[]` to assert the type
+        return query.lean().exec() as unknown as Promise<AuditLog[]>;
+    }
+
 }

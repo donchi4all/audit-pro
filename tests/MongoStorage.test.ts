@@ -38,7 +38,6 @@ describe('MongoStorage', () => {
             userId: 'user123',
             action: 'CREATE',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: { detail: 'Created a new resource' },
             additionalInfo: 'Extra info about the event',
         };
@@ -55,7 +54,6 @@ describe('MongoStorage', () => {
             userId: 'user123',
             action: 'CREATE',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: { detail: 'Created a new resource' },
         };
 
@@ -63,7 +61,6 @@ describe('MongoStorage', () => {
             userId: 'user456',
             action: 'DELETE',
             logLevel: LogLevel.ERROR,
-            timestamp: new Date(),
             metadata: { detail: 'Deleted a resource' },
         };
 
@@ -80,7 +77,6 @@ describe('MongoStorage', () => {
             userId: 'user123',
             action: 'CREATE',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: { detail: 'Created a new resource' },
         };
 
@@ -100,7 +96,6 @@ describe('MongoStorage', () => {
             userId: 'testUser',
             action: 'testAction',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: { key: 'value' }
         };
     
@@ -116,7 +111,6 @@ describe('MongoStorage', () => {
             userId: 'user123',
             action: 'CREATE',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: { detail: 'Created a new resource' },
         };
 
@@ -135,7 +129,6 @@ describe('MongoStorage', () => {
             userId: 'user123',
             action: 'CREATE',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: { detail: 'Created a new resource' },
         };
 
@@ -143,7 +136,6 @@ describe('MongoStorage', () => {
             userId: 'user456',
             action: 'DELETE',
             logLevel: LogLevel.ERROR,
-            timestamp: new Date(),
             metadata: { detail: 'Deleted a resource' },
         };
 

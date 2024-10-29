@@ -44,3 +44,14 @@ mongoStorage.logEvent(logEvent)
     .catch(err => {
         console.error('Error:', err);
     });
+
+
+// Now you can use the model directly
+async function runStorageOperations() {
+    // Access the model instance
+    const auditLogModel = mongoStorage.getModelInstance();
+    const logs = await auditLogModel.find({ userId: 'user123' }).exec();
+    console.log(logs);
+}
+
+runStorageOperations();

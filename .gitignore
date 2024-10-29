@@ -24,4 +24,4 @@ Thumbs.db
 # TypeScript artifacts
 *.tsbuildinfo
 coverage/
-*.json
+logs.json

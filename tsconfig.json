@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es6", // or a more recent ecmascript version
+    "module": "commonjs",
+    "lib": ["es2017", "es7", "es6", "dom","ES2020","ES2015"],
+    "declaration": true,
+    "outDir": "donsoft",
+    "strict": true,
+    "esModuleInterop": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false,
+    "skipLibCheck": true
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "donsoft",
+    "src/example/**",
+    "tests/**/*.test.ts"
+  ]
+}

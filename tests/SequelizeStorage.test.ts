@@ -34,7 +34,6 @@ describe('SequelizeStorage', () => {
             userId: 'testUser',
             action: 'testAction',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: {}
         };
 
@@ -50,7 +49,6 @@ describe('SequelizeStorage', () => {
             userId: 'testUser',
             action: 'testAction',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: {}
         };
 
@@ -78,7 +76,6 @@ describe('SequelizeStorage', () => {
             userId: 'testUser1',
             action: 'testAction1',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: {}
         });
 
@@ -86,7 +83,6 @@ describe('SequelizeStorage', () => {
             userId: 'testUser2',
             action: 'testAction2',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: {}
         });
 
@@ -99,7 +95,6 @@ describe('SequelizeStorage', () => {
             userId: 'testUser',
             action: 'testAction',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: {}
         };
 
@@ -115,7 +110,6 @@ describe('SequelizeStorage', () => {
             userId: 'testUser',
             action: 'testAction',
             logLevel: LogLevel.INFO,
-            timestamp: new Date(),
             metadata: {}
         };
 

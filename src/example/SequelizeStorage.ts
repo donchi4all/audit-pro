@@ -54,16 +54,25 @@ async function runStorageOperations() {
         console.log('Updated log:', updatedLog);
 
         // Delete a log
-        const deleteResult = await storage.deleteLog('unique-log-id');
-        console.log('Deleted log result:', deleteResult);
+        // const deleteResult = await storage.deleteLog('unique-log-id');
+        // console.log('Deleted log result:', deleteResult);
 
         // Count logs for a specific user
         const logCount = await storage.countLogs({ userId: 'user123' });
         console.log(`Total logs for user123: ${logCount}`);
+
+        const findAllLogs: AuditLog[] = await storage.findAll({
+            where: { userId: 'user123', logLevel: LogLevel.INFO }, // Filter criteria
+            include: [
+                { association: 'user', required: true }, // Fetch associated User
+            ],
+            order: [['timestamp', 'desc']]                // Sort by timestamp in descending order
+        });
+
+        console.log('findAllLogs', findAllLogs);
     } catch (error) {
         console.error('Error performing storage operations:', error);
     }
 }
 
-// Run the storage operations
 runStorageOperations();

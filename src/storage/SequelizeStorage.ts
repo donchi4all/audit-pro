@@ -1,13 +1,21 @@
-import { Sequelize, DataTypes, Model, ModelAttributes, ModelStatic } from 'sequelize';
+import { Sequelize, DataTypes, Model, ModelAttributes, ModelStatic, AssociationOptions } from 'sequelize';
 import { AuditLog, StorageInterface } from '../interfaces';
 
+interface AssociationConfig {
+    relationship: 'belongsTo' | 'hasMany' | 'hasOne' | 'belongsToMany';
+    targetModel: ModelStatic<any>;
+    options?: AssociationOptions & { through?: string | ModelStatic<any> };
+}
 export class SequelizeStorage implements StorageInterface {
     private sequelize: Sequelize;
     private models: { [key: string]: ModelStatic<Model<AuditLog>> } = {};
     private tableName: string;
     private dynamicColumns: ModelAttributes<Model<AuditLog>, AuditLog>;
 
-    constructor(sequelize: Sequelize, tableName: string, dynamicColumns: Partial<ModelAttributes<Model<AuditLog>, AuditLog>>) {
+    constructor(sequelize: Sequelize, tableName: string,
+        dynamicColumns: Partial<ModelAttributes<Model<AuditLog>, AuditLog>>,
+        associations: { [key: string]: AssociationConfig } = {}
+    ) {
         this.sequelize = sequelize;
         this.tableName = tableName;
 
@@ -30,10 +38,6 @@ export class SequelizeStorage implements StorageInterface {
                 type: DataTypes.STRING,
                 allowNull: false,
             },
-            timestamp: {
-                type: DataTypes.DATE,
-                allowNull: false,
-            },
             metadata: {
                 type: DataTypes.JSON,
                 allowNull: true,
@@ -46,6 +50,7 @@ export class SequelizeStorage implements StorageInterface {
         } as ModelAttributes<Model<AuditLog>, AuditLog>;
 
         this.getModel(); // Define the model during initialization
+        this.defineAssociations(associations); // Define associations during initialization
     }
 
     public getTableName(): string {
@@ -61,6 +66,38 @@ export class SequelizeStorage implements StorageInterface {
             this.models[this.tableName] = this.defineModel();
         }
         return this.models[this.tableName];
+    }
+
+    private defineAssociations(associations: { [key: string]: AssociationConfig }): void {
+        const model = this.getModel();
+
+        for (const [alias, { relationship, targetModel, options }] of Object.entries(associations)) {
+            switch (relationship) {
+                case 'belongsTo':
+                    model.belongsTo(targetModel, { ...options, as: alias });
+                    break;
+                case 'hasMany':
+                    model.hasMany(targetModel, { ...options, as: alias });
+                    break;
+                case 'hasOne':
+                    model.hasOne(targetModel, { ...options, as: alias });
+                    break;
+                case 'belongsToMany':
+                    if (!options || !options.through) {
+                        throw new Error(`A 'through' table is required for belongsToMany associations. Association: ${alias}`);
+                    }
+                    model.belongsToMany(targetModel, { ...options, as: alias, through: options.through });
+                    break;
+                default:
+                    throw new Error(`Invalid association type: ${relationship}`);
+            }
+        }
+    }
+
+
+    // Public getter to expose the model instance
+    public getModelInstance(): ModelStatic<Model<AuditLog>> {
+        return this.getModel();
     }
 
     public async syncTable(): Promise<void> {
@@ -112,4 +149,33 @@ export class SequelizeStorage implements StorageInterface {
         await model.sync(); // Sync the table before counting
         return await model.count({ where: filter });
     }
+
+    public async findAll({
+        where = {},
+        include = [],
+        order = []
+    }: {
+        where?: Record<string, any>;
+        include?: Array<{ association: string; required?: boolean; attributes?: string[] }>; // Make sure to define the type correctly
+        order?: [string, 'asc' | 'desc'][];
+    }): Promise<AuditLog[]> {
+        const model = this.getModel();
+        await model.sync(); // Sync the table before querying
+
+        const logs = await model.findAll({
+            where,
+            include: include.map(item => {
+                // Map to association objects and apply attributes if present
+                return {
+                    association: item.association,
+                    required: item.required || false, // Default to false if not specified
+                    attributes: item.attributes || undefined // Use provided attributes or undefined
+                };
+            }),
+            order: order.map(([field, direction]) => [field, direction.toUpperCase()]) // Convert to Sequelize order format
+        });
+
+        return logs.map(log => log.get({ plain: true })) as AuditLog[];
+    }
+
 }

@@ -43,7 +43,6 @@ describe('LogViewer', () => {
                 userId: 'user1234',
                 action: 'User Login',
                 logLevel: LogLevel.INFO,
-                timestamp: new Date('2024-10-18T02:36:57.995Z'),
                 metadata: { ipAddress: '192.168.1.1' },
             }
         ];
