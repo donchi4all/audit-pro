@@ -1,78 +1,74 @@
 import { DataTypes, Model, ModelAttributes, Sequelize } from 'sequelize';
 import { AuditLogInterface } from '../interfaces';
 import { SequelizeStorage } from '../storage/SequelizeStorage';
-import { LogLevel } from '../LogLevel';
+import { LogLevelEnum } from '../LogLevel';
 
-const isDevelopment = process.env.NODE_ENV === 'development';
-// Initialize Sequelize
+
 const sequelize = new Sequelize('mysql://root:password@localhost:3306/audit', {
-    logging: isDevelopment ? console.log : false,
+    logging: false, // Set to true for SQL query logging
 });
 
-// Define dynamic columns (if any)
-const dynamicColumns: Partial<ModelAttributes<Model<AuditLogInterface>, AuditLogInterface>> = {
-    additionalInfo: {
-        type: DataTypes.STRING,
-        allowNull: true,
-    },
-};
+const tableName = 'AuditLogs';
+const dynamicColumns = {}; // Add any dynamic columns if needed
 
-// Create the storage instance with the necessary table name and dynamic columns
-const storage = new SequelizeStorage(sequelize, 'AuditLogs', dynamicColumns);
+const sequelizeStorage = new SequelizeStorage(sequelize, tableName, dynamicColumns);
 
-// Example of logging an event
-const logEvent: AuditLogInterface = {
-    id: 'unique-log-id',
-    userId: 'user123',
-    action: 'User Login',
-    logLevel: LogLevel.INFO,
-    timestamp: new Date(),
-    metadata: { ipAddress: '192.168.1.1' },
-    additionalInfo: 'extra information'
-};
-
-// Main function to demonstrate the various operations
-async function runStorageOperations() {
+const runExample = async () => {
     try {
-        // Log an event
-        await storage.logEvent(logEvent);
-        console.log('Log event saved.');
+        // 1. Sync the table
+        await sequelizeStorage.syncTable();
+        console.log('Table synced successfully.');
 
-        // Fetch logs for a specific user
-        const logs = await storage.fetchLogs({ userId: 'user123' });
-        console.log('Fetched logs:', logs);
+        // 2. Log an event
+        const newLog: AuditLogInterface = {
+            userId: 'user1234',
+            action: 'User Login',
+            logLevel: LogLevelEnum.INFO,
+            metadata: { ipAddress: '192.168.1.1' },
+        };
 
-        // Fetch all logs
-        const allLogs = await storage.fetchAllLogs();
-        console.log('All logs:', allLogs);
+        await sequelizeStorage.logEvent(newLog);
+        console.log('Log event created successfully.');
 
-        // Update a log (example: change the action)
-        const updatedLog = await storage.updateLog(
-            'unique-log-id', // filter to find the log
-            { action: 'Updated User Action' } // fields to update
-        );
-        console.log('Updated log:', updatedLog);
-
-        // Delete a log
-        // const deleteResult = await storage.deleteLog('unique-log-id');
-        // console.log('Deleted log result:', deleteResult);
-
-        // Count logs for a specific user
-        const logCount = await storage.countLogs({ userId: 'user123' });
-        console.log(`Total logs for user123: ${logCount}`);
-
-        const findAllLogs: AuditLogInterface[] = await storage.findAll({
-            where: { userId: 'user123', logLevel: LogLevel.INFO }, // Filter criteria
-            include: [
-                { association: 'user', required: true }, // Fetch associated User
-            ],
-            order: [['timestamp', 'desc']]                // Sort by timestamp in descending order
+        // 3. Fetch logs
+        const { data: logs, total, page, limit } = await sequelizeStorage.fetchLogs({
+            where: { userId: 'user1234' },
+            page: 1,
+            limit: 5,
         });
 
-        console.log('findAllLogs', findAllLogs);
-    } catch (error) {
-        console.error('Error performing storage operations:', error);
-    }
-}
+        console.log(`Total logs: ${total}, Page: ${page}, Limit: ${limit}`);
+        console.log('Fetched logs:', logs);
 
-runStorageOperations();
+        // 4. Update a log (assume the first log's ID is available)
+        if (logs.length > 0) {
+            const logId = logs[0].id; // Get the ID of the first log
+            await sequelizeStorage.updateLog(logId!, { action: 'User Logout' });
+            console.log(`Log with ID ${logId} updated successfully.`);
+        }
+
+        // 5. Fetch the updated log
+        const updatedLog = await sequelizeStorage.fetchLog({ where: { id: logs[0].id } });
+        console.log('Updated log:', updatedLog);
+
+        // 6. Delete a log (again using the first log's ID)
+        if (logs.length > 0) {
+            const logId = logs[0].id; // Get the ID of the first log
+            await sequelizeStorage.deleteLog(logId!);
+            console.log(`Log with ID ${logId} deleted successfully.`);
+        }
+
+        // 7. Fetch logs after deletion to verify
+        const logsAfterDeletion = await sequelizeStorage.fetchLogs({ where: { userId: 'user1234' } });
+        console.log('Logs after deletion:', logsAfterDeletion.data);
+
+    } catch (error) {
+        console.error('Error occurred:', error);
+    } finally {
+        // Close the Sequelize connection
+        await sequelize.close();
+        console.log('Database connection closed.');
+    }
+};
+
+runExample();

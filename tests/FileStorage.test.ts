@@ -1,36 +1,135 @@
 import { FileStorage } from '../src/storage/FileStorage'; // Adjust the path as necessary
-import { LogLevel } from '../src/LogLevel';
+import { LogLevelEnum } from '../src/LogLevel';
 import { AuditLogInterface } from '../src/interfaces';
+import { promises as fs } from 'fs';
+
+// Mock the entire fs module
+jest.mock('fs', () => ({
+    promises: {
+        readFile: jest.fn(),
+        writeFile: jest.fn(),
+    },
+}));
 
 describe('FileStorage', () => {
-    const fileStorage = new FileStorage('logs.json', {});
+    const filePath = 'testLogs.json';
+    const dynamicColumns = { additionalInfo: 'test' };
+    let fileStorage: FileStorage;
 
-    it('should log an event successfully', async () => {
-        const logEvent: AuditLogInterface = {
-            id: 'test-log-id',
-            userId: 'testUser',
-            action: 'Test Action',
-            logLevel: LogLevel.INFO,
-            timestamp: new Date(),
-            metadata: { ipAddress: '127.0.0.1' },
+    beforeEach(() => {
+        fileStorage = new FileStorage(filePath, dynamicColumns);
+    });
+
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+
+
+  test('should log an event', async () => {
+        const event: AuditLogInterface = {
+            id: '1',
+            userId: 'user1',
+            action: 'CREATE',
+            logLevel:LogLevelEnum.INFO,
+            metadata: {},
+            createdAt: new Date().toISOString(),
         };
 
-        await fileStorage.logEvent(logEvent);
+        (fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify([]));
+        (fs.writeFile as jest.Mock).mockResolvedValueOnce(undefined);
 
-        const logs = await fileStorage.fetchLogs({ userId: 'testUser' });
-        expect(logs).toHaveLength(1);
-        expect(logs[0].action).toBe('Test Action');
+        await fileStorage.logEvent(event);
+
+        expect(fs.writeFile).toHaveBeenCalledWith(filePath, JSON.stringify([{
+            ...event,
+            ...dynamicColumns,
+        }], null, 2));
     });
 
-    it('should fetch all logs', async () => {
-        const allLogs = await fileStorage.fetchAllLogs();
-        expect(allLogs).toBeDefined();
-        expect(allLogs.length).toBeGreaterThan(0); // Adjust based on your setup
+
+    test('should fetch logs', async () => {
+        const logs: AuditLogInterface[] = [
+            {
+                id: '1',
+                userId: 'user1',
+                action: 'CREATE',
+                logLevel: LogLevelEnum.INFO,
+                metadata: {},
+                createdAt: new Date().toISOString(),
+            },
+            {
+                id: '2',
+                userId: 'user2',
+                action: 'DELETE',
+                logLevel: LogLevelEnum.WARN,
+                metadata: {},
+                createdAt: new Date().toISOString(),
+            },
+        ];
+
+        (fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(logs));
+
+        const result = await fileStorage.fetchLogs({ where: { userId: 'user1' }, page: 1, limit: 10 });
+
+        expect(result).toEqual({
+            data: [logs[0]],
+            total: 1,
+            page: 1,
+            limit: 10,
+        });
     });
 
-    it('should delete a log', async () => {
-        await fileStorage.deleteLog('test-log-id');
-        const logs = await fileStorage.fetchLogs({ userId: 'testUser' });
-        expect(logs).toHaveLength(0); // Log should be deleted
+    test('should update a log', async () => {
+        const logs: AuditLogInterface[] = [
+            {
+                id: '1',
+                userId: 'user1',
+                action: 'CREATE',
+                logLevel: LogLevelEnum.INFO,
+                metadata: {},
+                createdAt: new Date().toISOString(),
+            },
+        ];
+
+        (fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(logs));
+        (fs.writeFile as jest.Mock).mockResolvedValueOnce(undefined);
+
+        const updates = { action: 'UPDATE' };
+
+        await fileStorage.updateLog('1', updates);
+
+        expect(fs.writeFile).toHaveBeenCalledWith(filePath, JSON.stringify([{
+            ...logs[0],
+            ...updates,
+            ...dynamicColumns,
+        }], null, 2));
+    });
+
+    test('should delete a log', async () => {
+        const logs: AuditLogInterface[] = [
+            {
+                id: '1',
+                userId: 'user1',
+                action: 'CREATE',
+                logLevel: LogLevelEnum.INFO,
+                metadata: {},
+                createdAt: new Date().toISOString(),
+            },
+            {
+                id: '2',
+                userId: 'user2',
+                action: 'DELETE',
+                logLevel: LogLevelEnum.WARN,
+                metadata: {},
+                createdAt: new Date().toISOString(),
+            },
+        ];
+
+        (fs.readFile as jest.Mock).mockResolvedValueOnce(JSON.stringify(logs));
+        (fs.writeFile as jest.Mock).mockResolvedValueOnce(undefined);
+
+        await fileStorage.deleteLog('1');
+
+        expect(fs.writeFile).toHaveBeenCalledWith(filePath, JSON.stringify([logs[1]], null, 2));
     });
 });

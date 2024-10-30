@@ -1,57 +1,55 @@
 import { promises as fs } from 'fs';
-import { StorageInterface, AuditLogInterface } from '../interfaces';
+import { StorageInterface, AuditLogInterface, FindParams } from '../interfaces';
 
 export class FileStorage implements StorageInterface {
     private filePath: string;
-    private dynamicColumns: { [key: string]: any }; // Store dynamic columns
+    private dynamicColumns: { [key: string]: any };
 
     constructor(filePath: string, dynamicColumns: { [key: string]: any }) {
         this.filePath = filePath;
         this.dynamicColumns = dynamicColumns;
     }
+    getModelInstance() {
+        throw new Error('Method not implemented.');
+    }
+
     getTableName(): string {
         return this.filePath;
     }
 
-    // Public getter to expose the file path
     public getFilePath(): string {
         return this.filePath;
     }
 
-    // Log event with dynamic columns
     public async logEvent(event: AuditLogInterface): Promise<void> {
         const logs = await this.readLogs();
-        const dynamicEvent = { ...event, ...this.dynamicColumns }; // Merge event and dynamic columns
+        const dynamicEvent = { ...event, ...this.dynamicColumns };
         logs.push(dynamicEvent);
-        await this.writeLogs(logs); // Ensure JSON is rewritten correctly
+        await this.writeLogs(logs);
     }
 
-    // Fetch logs by applying filters including dynamic columns
-    public async fetchLogs(filter: any): Promise<AuditLogInterface[]> {
+    public async fetchLogs({ where = {}, page = 1, limit = 10 }: FindParams): Promise<{ data: AuditLogInterface[], total: number, page: number, limit: number }> {
         const logs = await this.readLogs();
-        return logs.filter((log) =>
-            Object.keys(filter).every((key) => log[key] === filter[key])
+        const filteredLogs = logs.filter((log) =>
+            Object.keys(where).every((key) => log[key] === where[key])
         );
+
+        const total = filteredLogs.length;
+        const offset = (page - 1) * limit;
+        const paginatedData = filteredLogs.slice(offset, offset + limit);
+
+        return { data: paginatedData, total, page, limit };
     }
 
-    // Fetch logs by applying filters including dynamic columns
-    public async fetchLog(filter: any): Promise<AuditLogInterface> {
+    public async fetchLog({ where = {} }: FindParams): Promise<AuditLogInterface | null> {
         const logs = await this.readLogs();
-        return logs[0];
+        const logEntry = logs.find((log) =>
+            Object.keys(where).every((key) => log[key] === where[key])
+        );
+        return logEntry ? { ...logEntry } : null;
     }
+    
 
-    // Fetch all logs
-    public async fetchAllLogs(): Promise<AuditLogInterface[]> {
-        return await this.readLogs();
-    }
-
-    // Count logs that match a specific filter
-    public async countLogs(filter: any): Promise<number> {
-        const logs = await this.fetchLogs(filter);
-        return logs.length;
-    }
-
-    // Update logs with dynamic columns
     public async updateLog(id: string, updates: Partial<AuditLogInterface>): Promise<void> {
         const logs = await this.readLogs();
         const index = logs.findIndex((log) => log.id === id);
@@ -61,14 +59,33 @@ export class FileStorage implements StorageInterface {
         }
     }
 
-    // Delete a log by id
     public async deleteLog(id: string): Promise<void> {
         const logs = await this.readLogs();
         const updatedLogs = logs.filter((log) => log.id !== id);
         await this.writeLogs(updatedLogs);
     }
 
-    // Read logs from file
+    public async deleteLogsOlderThan(date: Date = new Date(new Date().setMonth(new Date().getMonth() - 3))): Promise<void> {
+        const logs = await this.readLogs();
+        const updatedLogs = logs.filter((log) => new Date(log.createdAt) >= date);
+        await this.writeLogs(updatedLogs);
+    }
+
+    public async countLogs(filter: Record<string, any>): Promise<number> {
+        const logs = await this.fetchLogs({ where: filter });
+        return logs.total;
+    }
+
+    public async findAll({
+        where = {},
+        include = [],
+        order = [],
+        page = 1,
+        limit = 10
+    }: FindParams): Promise<{ data: AuditLogInterface[], total: number, page: number, limit: number }> {
+        return this.fetchLogs({ where, page, limit });
+    }
+
     private async readLogs(): Promise<AuditLogInterface[]> {
         try {
             const content = await fs.readFile(this.filePath, 'utf-8');
@@ -78,63 +95,10 @@ export class FileStorage implements StorageInterface {
         }
     }
 
-    // Write logs to file and ensure the JSON structure is valid
     private async writeLogs(logs: AuditLogInterface[]): Promise<void> {
         if (logs.length === 0) {
-            // Don't write anything if the logs array is empty
             return;
         }
         await fs.writeFile(this.filePath, JSON.stringify(logs, null, 2));
     }
-
-    public async findAll({
-        where = {},
-        include = [],
-        order = []
-    }: {
-        where?: Record<string, any>;
-        include?: Array<{ association: string; required?: boolean; attributes?: string[] }>; // Updated to accept complex include structure
-        order?: [string, 'asc' | 'desc'][];
-    }): Promise<any[]> {
-        const data = await fs.readFile(this.filePath, 'utf-8');
-        let logs = JSON.parse(data);
-
-        // Apply filtering based on `where` criteria
-        logs = logs.filter((log: Record<string, any>) =>
-            Object.keys(where).every(key => log[key] === where[key])
-        );
-
-        // Optionally include specific fields based on the new include structure
-        if (include.length > 0) {
-            logs = logs.map((log: Record<string, any>) => {
-                const result: Record<string, any> = {};
-                include.forEach(({ association, attributes }) => {
-                    // If attributes are specified, include only those
-                    if (attributes) {
-                        result[association] = attributes.reduce((acc: Record<string, any>, attr: string) => {
-                            acc[attr] = log[association]?.[attr]; // Safely access the association attributes
-                            return acc;
-                        }, {});
-                    } else {
-                        result[association] = log[association]; // Include the entire association if no attributes are specified
-                    }
-                });
-                return { ...log, ...result }; // Combine the log with the included associations
-            });
-        }
-
-        // Apply sorting
-        if (order.length > 0) {
-            logs.sort((a: any, b: any) => {
-                for (const [key, direction] of order) {
-                    if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
-                    if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
-                }
-                return 0;
-            });
-        }
-
-        return logs;
-    }
-
 }

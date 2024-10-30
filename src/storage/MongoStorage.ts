@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { AuditLogInterface, StorageInterface } from '../interfaces';
+import { AuditLogInterface, StorageInterface, FindParams } from '../interfaces';
 
 interface MongoAuditLog extends Document, Omit<AuditLogInterface, 'id'> { }
 
@@ -32,7 +32,6 @@ export class MongoStorage implements StorageInterface {
         });
     }
 
-
     public getTableName(): string {
         return this.tableName;
     }
@@ -48,16 +47,35 @@ export class MongoStorage implements StorageInterface {
         await logEntry.save();
     }
 
-    public async fetchLogs(filter: any): Promise<AuditLogInterface[]> {
+    public async fetchLogs({ where = {}, include = [], page = 1, limit = 10 }: FindParams): Promise<{ data: AuditLogInterface[], total: number, page: number, limit: number }> {
         const model = this.getModel();
-        const logs = await model.find(filter).exec();
-        return logs.map(log => log.toObject() as unknown as AuditLogInterface);
+        const query = model.find(where);
+
+        this.applyPopulation(query, include);
+
+        const total = await model.countDocuments(where);
+        const logs = await query.skip((page - 1) * limit).limit(limit).lean().exec();
+
+        return {
+            data: logs as unknown as AuditLogInterface[],
+            total,
+            page,
+            limit,
+        };
     }
 
-    public async fetchLog(filter: any): Promise<AuditLogInterface | null> {
+    public async fetchLog({ where, include = [] }: FindParams): Promise<AuditLogInterface | null> {
         const model = this.getModel();
-        return await model.findOne(filter);
+
+        // Create the query with findOne and apply population
+        const query = model.findOne(where);
+        this.applyPopulation(query, include); // Populate associations directly in the query
+
+        const log = await query.lean().exec(); // Convert to plain object after population
+
+        return log ? (log as unknown as AuditLogInterface) : null;
     }
+
 
     public async updateLog(id: string, updates: Partial<AuditLogInterface>): Promise<void> {
         const model = this.getModel();
@@ -69,48 +87,52 @@ export class MongoStorage implements StorageInterface {
         await model.deleteOne({ _id: id });
     }
 
-
-    public async fetchAllLogs(): Promise<AuditLogInterface[]> {
+    public async deleteLogsOlderThan(date?: Date): Promise<void> {
         const model = this.getModel();
-        const logs = await model.find().exec();
-        return logs.map(log => log.toObject() as unknown as AuditLogInterface);
+        const thresholdDate = date || new Date(Date.now() - 3 * 30 * 24 * 60 * 60 * 1000); // Default to 3 months
+        await model.deleteMany({ createdAt: { $lt: thresholdDate } });
     }
 
-    public async countLogs(filter: any): Promise<number> {
+    public async countLogs(filter: Record<string, any>): Promise<number> {
         const model = this.getModel();
-        return await model.countDocuments(filter).exec();
+        return await model.countDocuments(filter);
     }
 
-    private getModel(): mongoose.Model<MongoAuditLog> {
+    public getModel(): mongoose.Model<MongoAuditLog> {
         if (!this.models[this.tableName]) {
             this.models[this.tableName] = createMongoModel(this.tableName, this.dynamicColumns);
         }
         return this.models[this.tableName];
     }
 
-
-    public async findAll({
-        where = {},
-        include = [],
-        order = []
-    }: {
-        where?: Record<string, any>;
-        include?: Array<{ association: string; required?: boolean; attributes?: string[] }>; // Updated to accept complex include structure
-        order?: [string, 'asc' | 'desc'][];
-    }): Promise<AuditLogInterface[]> {
-        const model = this.getModel();
-        const query = model.find(where);
-
-        // Add includes (populate related documents)
+    // Centralized population method
+    private applyPopulation(
+        query: mongoose.Query<any, MongoAuditLog>, // Adjusted type with any as ResultType and MongoAuditLog as DocumentType
+        include: Array<{ association: string; required?: boolean; attributes?: string[] }>
+    ) {
         include.forEach(item => {
             const { association, required = false, attributes } = item;
             query.populate({
                 path: association,
                 model: association, // Ensure the model name matches the association name
                 select: attributes ? attributes.join(' ') : undefined, // Include specific attributes if provided
-                match: required ? {} : undefined, // Add any match condition if required
             });
         });
+    }
+
+
+    public async findAll({ where = {}, include = [], order = [], page = 1, limit = 10 }: {
+        where?: Record<string, any>;
+        include?: Array<{ association: string; required?: boolean; attributes?: string[] }>; // Updated to accept complex include structure
+        order?: [string, 'asc' | 'desc'][];
+        page?: number;  // For pagination, default to 1 if not provided
+        limit?: number; // For pagination, default to a specific limit (e.g., 10) if not provided
+    }): Promise<{ data: AuditLogInterface[], total: number, page: number, limit: number }> {
+        const model = this.getModel();
+        const query = model.find(where);
+
+        // Apply population for associated documents
+        this.applyPopulation(query, include);
 
         // Add ordering
         if (order.length > 0) {
@@ -118,8 +140,14 @@ export class MongoStorage implements StorageInterface {
             query.sort(sortOptions);
         }
 
-        // Use `as AuditLogInterface[]` to assert the type
-        return query.lean().exec() as unknown as Promise<AuditLogInterface[]>;
-    }
+        const total = await model.countDocuments(where);
+        const logs = await query.skip((page - 1) * limit).limit(limit).lean().exec();
 
+        return {
+            data: logs.map(log => log.toObject() as AuditLogInterface),
+            total,
+            page,
+            limit,
+        };
+    }
 }

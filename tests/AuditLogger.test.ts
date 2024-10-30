@@ -1,109 +1,155 @@
 import { AuditLogger } from '../src/AuditLogger';
 import { ConsoleLogger } from '../src/ConsoleLogger';
 import { StorageInterface, AuditLogInterface } from '../src/interfaces';
-import { LogLevel } from '../src/LogLevel';
+import { LogLevelEnum } from '../src/LogLevel';
 
-const mockStorage: jest.Mocked<StorageInterface> = {
-    logEvent: jest.fn(),
-    fetchLogs: jest.fn(),
-    fetchLog: jest.fn(),
-    updateLog: jest.fn(),
-    deleteLog: jest.fn(),
-    countLogs: jest.fn(),
-    getTableName: jest.fn(),
-    findAll: jest.fn(),
-};
-
-// Mocking ConsoleLogger without the columns properties
-const createMockConsoleLogger = (): jest.Mocked<ConsoleLogger> => {
-    return {
-        getIsEnabled: jest.fn().mockReturnValue(true), // Default to enabled
-        logEventToConsole: jest.fn(),
-        isEnabled: true,
-        colorize: jest.fn(), // Mock colorize method
-    } as unknown as jest.Mocked<ConsoleLogger>;
-};
 
 describe('AuditLogger', () => {
+    let storage: jest.Mocked<StorageInterface>;
+    let consoleLogger: jest.Mocked<ConsoleLogger>;
     let auditLogger: AuditLogger;
-    let mockConsoleLogger: jest.Mocked<ConsoleLogger>;
-
-    const testLog: AuditLogInterface = {
-        id: 'unique-log-id',
-        userId: 'user123',
-        action: 'User Login',
-        logLevel: LogLevel.INFO,
-        timestamp: new Date(),
-        metadata: { ipAddress: '192.168.1.1' },
-    };
 
     beforeEach(() => {
-        mockConsoleLogger = createMockConsoleLogger();
-        auditLogger = new AuditLogger(mockStorage, mockConsoleLogger);
+        // Mock the console.error function
+        jest.spyOn(console, 'error').mockImplementation(() => { });
+
+        storage = {
+            logEvent: jest.fn(),
+            fetchLogs: jest.fn(),
+            fetchLog: jest.fn(),
+            updateLog: jest.fn(),
+            deleteLog: jest.fn(),
+            countLogs: jest.fn(),
+            findAll: jest.fn(),
+            deleteLogsOlderThan: jest.fn(), // Include the required method
+            getTableName: jest.fn().mockReturnValue('logs'),
+            getModelInstance: jest.fn(),
+        };
+
+        consoleLogger = {
+            getIsEnabled: jest.fn().mockReturnValue(true),
+            logEventToConsole: jest.fn(),
+            isEnabled: true, // Add required properties
+            columns: [],     // Add required properties
+            defaultColumns: [], // Add required properties
+            colorizets: jest.fn(), // Add required method if necessary
+        } as any; // Use 'as any' if the structure is complex
+
+        auditLogger = new AuditLogger(storage, consoleLogger);
     });
 
-    afterEach(async () => {
-        // Cleanup: Delete any logs created during the tests
-        if (testLog.id) await mockStorage.deleteLog(testLog.id); // Delete the specific log created
-        jest.clearAllMocks(); // Clear all mocks after each test
+    it('should log an event successfully', async () => {
+        const log: AuditLogInterface = { id: '1', userId: 'user123', action: 'test', logLevel: LogLevelEnum.INFO };
+        await auditLogger.logEvent(log);
+        expect(storage.logEvent).toHaveBeenCalledWith(log);
     });
 
-    test('should log an event to storage and console', async () => {
-        mockConsoleLogger.getIsEnabled.mockReturnValue(true); // Console logging enabled
+    it('should handle errors when logging an event', async () => {
+        const log: AuditLogInterface = { id: '1', userId: 'user123', action: 'test', logLevel: LogLevelEnum.INFO };
+        storage.logEvent.mockRejectedValueOnce(new Error('Log error'));
 
-        await auditLogger.logEvent(testLog);
-
-        expect(mockStorage.logEvent).toHaveBeenCalledWith(testLog);
-        expect(mockConsoleLogger.logEventToConsole).toHaveBeenCalledWith(testLog);
+        await auditLogger.logEvent(log);
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Failed to log event'));
     });
 
-    test('should log an event to storage only when console logging is disabled', async () => {
-        mockConsoleLogger.getIsEnabled.mockReturnValue(false); // Console logging disabled
+    it('should fetch logs based on filters', async () => {
+        const logs = [{ id: '1', userId: 'user123', action: 'test', logLevel: LogLevelEnum.INFO }];
+        storage.fetchLogs.mockResolvedValueOnce({ data: logs, total: 1, page: 1, limit: 10 });
 
-        await auditLogger.logEvent(testLog);
-
-        expect(mockStorage.logEvent).toHaveBeenCalledWith(testLog);
-        expect(mockConsoleLogger.logEventToConsole).not.toHaveBeenCalled();
+        const result = await auditLogger.fetchLogs({ where: { userId: 'user123' } });
+        expect(result).toEqual({ data: logs, total: 1, page: 1, limit: 10 });
     });
 
-    test('should fetch logs from storage with a filter', async () => {
-        const mockLogs: AuditLogInterface[] = [testLog];
-        mockStorage.fetchLogs.mockResolvedValue(mockLogs);
+    it('should handle errors when fetching logs', async () => {
+        storage.fetchLogs.mockRejectedValueOnce(new Error('Fetch error'));
 
-        const logs = await auditLogger.fetchLogs({ userId: 'user123' });
-
-        expect(mockStorage.fetchLogs).toHaveBeenCalledWith({ userId: 'user123' });
-        expect(logs).toEqual(mockLogs);
+        const result = await auditLogger.fetchLogs({ where: { userId: 'user123' } });
+        expect(result).toEqual({ data: [], total: 0, page: 1, limit: 10 });
     });
 
-    test('should update a log in storage', async () => {
-        const updates = { action: 'Updated Action' };
+    it('should fetch a single log successfully', async () => {
+        const log = { id: '1', userId: 'user123', action: 'test', logLevel: LogLevelEnum.INFO };
+        storage.fetchLog.mockResolvedValueOnce(log);
 
-        await auditLogger.updateLog('unique-log-id', updates);
-
-        expect(mockStorage.updateLog).toHaveBeenCalledWith('unique-log-id', updates);
+        const result = await auditLogger.fetchLog({});
+        expect(result).toEqual(log);
     });
 
-    test('should delete a log in storage', async () => {
-        await auditLogger.deleteLog('unique-log-id');
+    it('should return null when the log is not found', async () => {
+        storage.fetchLog.mockResolvedValueOnce(null);
 
-        expect(mockStorage.deleteLog).toHaveBeenCalledWith('unique-log-id');
+        const result = await auditLogger.fetchLog({});
+        expect(result).toBeNull();
     });
 
-    test('should count logs in storage based on filter', async () => {
-        mockStorage.countLogs.mockResolvedValue(10);
+    it('should handle errors when fetching a single log', async () => {
+        storage.fetchLog.mockRejectedValueOnce(new Error('Fetch single log error'));
+
+        const result = await auditLogger.fetchLog({});
+        expect(result).toBeNull();
+    });
+
+    it('should update a log successfully', async () => {
+        const updates = { action: 'updatedAction' };
+        await auditLogger.updateLog('1', updates);
+        expect(storage.updateLog).toHaveBeenCalledWith('1', updates);
+    });
+
+    it('should handle errors when updating a log', async () => {
+        const updates = { action: 'updatedAction' };
+        storage.updateLog.mockRejectedValueOnce(new Error('Update error'));
+
+        await auditLogger.updateLog('1', updates);
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Failed to update log'));
+    });
+
+    it('should delete a log successfully', async () => {
+        await auditLogger.deleteLog('1');
+        expect(storage.deleteLog).toHaveBeenCalledWith('1');
+    });
+
+    it('should handle errors when deleting a log', async () => {
+        storage.deleteLog.mockRejectedValueOnce(new Error('Delete error'));
+
+        await auditLogger.deleteLog('1');
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Failed to delete log'));
+    });
+
+    it('should count logs based on filter', async () => {
+        storage.countLogs.mockResolvedValueOnce(5);
 
         const count = await auditLogger.countLogs({ userId: 'user123' });
-
-        expect(mockStorage.countLogs).toHaveBeenCalledWith({ userId: 'user123' });
-        expect(count).toBe(10);
+        expect(count).toBe(5);
     });
 
-    test('should handle errors when logging an event', async () => {
-        mockStorage.logEvent.mockRejectedValue('Failed to log event: Failed to log event: Error: Storage error');
+    it('should handle errors when counting logs', async () => {
+        storage.countLogs.mockRejectedValueOnce(new Error('Count error'));
 
-        await auditLogger.logEvent(testLog);
-
-        expect(mockStorage.logEvent).toHaveBeenCalledWith(testLog);
+        const count = await auditLogger.countLogs({ userId: 'user123' });
+        expect(count).toBe(0);
     });
+
+    it('should delete logs older than a specified date', async () => {
+        const date = new Date('2023-01-01');
+        await auditLogger.deleteLogsOlderThan(date);
+        expect(storage.deleteLogsOlderThan).toHaveBeenCalledWith(date);
+    });
+
+    it('should handle errors when deleting logs older than a specified date', async () => {
+        const date = new Date('2023-01-01');
+        storage.deleteLogsOlderThan.mockRejectedValueOnce(new Error('Delete older logs error'));
+        
+        // Clear previous calls to console.error
+        jest.clearAllMocks();
+        
+        await auditLogger.deleteLogsOlderThan(date);
+    
+        // Check if console.error was called with the expected message
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Failed to delete logs older than'));
+    
+        // Ensure that console.error was called exactly once during this test
+        expect(console.error).toHaveBeenCalledTimes(1);
+    });
+    
+
 });

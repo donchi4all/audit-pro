@@ -1,57 +1,70 @@
-import { LogLevel } from "../LogLevel";
+import mongoose from "mongoose";
+import { AuditLogInterface } from "../interfaces";
+import { LogLevelEnum } from "../LogLevel";
 import { MongoStorage } from "../storage/MongoStorage";
 
-const mongoConnectionString = 'mongodb://localhost:27017/your-database-name';
+
+const mongoConnectionString = 'mongodb://localhost:27017/auditLogs';
 const tableName = 'AuditLogs';
+
 const dynamicColumns = {
-    additionalInfo: { type: String, required: false },
+    createdAt: { type: Date, default: Date.now },
 };
 
 const mongoStorage = new MongoStorage(mongoConnectionString, tableName, dynamicColumns);
 
-// Example of logging an event
-const logEvent = {
-    userId: 'user123',
-    action: 'User Login',
-    logLevel: LogLevel.INFO,
-    timestamp: new Date(),
-    metadata: { ipAddress: '192.168.1.1' },
-    additionalInfo: 'Additional Information successfully1'
+const runExample = async () => {
+    try {
+        // 1. Log an event
+        const newLog: AuditLogInterface = {
+            userId: 'user1234',
+            action: 'User Login',
+            logLevel: LogLevelEnum.INFO,
+            metadata: { ipAddress: '192.168.1.1' },
+        };
+
+        await mongoStorage.logEvent(newLog);
+        console.log('Log event created successfully.');
+
+        // 2. Fetch logs with pagination
+        const { data: logs, total, page, limit } = await mongoStorage.fetchLogs({
+            where: { userId: 'user1234' },
+            page: 1,
+            limit: 5,
+        });
+
+        console.log(`Total logs: ${total}, Page: ${page}, Limit: ${limit}`);
+        console.log('Fetched logs:', logs);
+
+        // 3. Update a log (assume the first log's ID is available)
+        if (logs.length > 0) {
+            const logId = logs[0].id; // Get the ID of the first log
+            await mongoStorage.updateLog(logId!, { action: 'User Logout' });
+            console.log(`Log with ID ${logId} updated successfully.`);
+        }
+
+        // 4. Fetch the updated log
+        const updatedLog = await mongoStorage.fetchLog({ where: { _id: logs[0]._id } });
+        console.log('Updated log:', updatedLog);
+
+        // 5. Delete a log (again using the first log's ID)
+        if (logs.length > 0) {
+            const logId = logs[0].id; // Get the ID of the first log
+            await mongoStorage.deleteLog(logId!);
+            console.log(`Log with ID ${logId} deleted successfully.`);
+        }
+
+        // 6. Fetch logs after deletion to verify
+        const logsAfterDeletion = await mongoStorage.fetchLogs({ where: { userId: 'user1234' } });
+        console.log('Logs after deletion:', logsAfterDeletion.data);
+
+    } catch (error) {
+        console.error('Error occurred:', error);
+    } finally {
+        // Close the Mongoose connection
+        await mongoose.connection.close();
+        console.log('MongoDB connection closed.');
+    }
 };
 
-// Log event
-mongoStorage.logEvent(logEvent)
-    .then(() => {
-        // Fetch all logs
-        return mongoStorage.fetchAllLogs();
-    })
-    .then(logs => {
-        console.log('Fetched all logs:', logs);
-
-        // Count logs for userId 'user123'
-        return mongoStorage.countLogs({ userId: 'user123' });
-    })
-    .then(count => {
-        console.log('Total logs for user123:', count);
-
-        // Example of deleting a log (assuming you have an ID)
-        const logIdToDelete = '67104b9e67685462b8cb6e15'; // Replace with actual log ID
-        return mongoStorage.deleteLog(logIdToDelete);
-    })
-    .then(() => {
-        console.log('Log deleted successfully');
-    })
-    .catch(err => {
-        console.error('Error:', err);
-    });
-
-
-// Now you can use the model directly
-async function runStorageOperations() {
-    // Access the model instance
-    const auditLogModel = mongoStorage.getModelInstance();
-    const logs = await auditLogModel.find({ userId: 'user123' }).exec();
-    console.log(logs);
-}
-
-runStorageOperations();
+runExample();

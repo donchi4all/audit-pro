@@ -2,7 +2,7 @@ import { ConsoleLogger } from './ConsoleLogger';
 import { AuditLogInterface, StorageInterface } from './interfaces';
 
 export class LogViewer {
-    private storages: StorageInterface[]; // Storages may have tableName property
+    private storages: StorageInterface[];
     private consoleLogger: ConsoleLogger;
 
     constructor(storages: StorageInterface[], consoleLogger: ConsoleLogger) {
@@ -11,25 +11,24 @@ export class LogViewer {
     }
 
     public async viewLogs(filter: any): Promise<AuditLogInterface[]> {
-        let allLogs: AuditLogInterface[] = [];
+        const allLogs: AuditLogInterface[] = [];
 
         for (const storage of this.storages) {
             const logs = await storage.fetchLogs(filter);
-
-            allLogs = [...allLogs, ...logs];
+            allLogs.push(...logs.data);
         }
 
-        // De-duplicate logs based on `id` or any unique field
-        const uniqueLogs = allLogs.filter((log, index, self) =>
-            index === self.findIndex((l) => l.id === log.id && l.timestamp === log.timestamp)
-        );
+        // Filter logs based on the filter criteria (e.g., userId)
+        const filteredLogs = allLogs.filter(log => {
+            return Object.entries(filter).every(([key, value]) => log[key] === value);
+        });
 
-        // Optionally log to console
-        uniqueLogs.forEach((log) => this.consoleLogger.logEventToConsole(log));
+        // De-duplicate logs based on `id`
+        const uniqueLogs = Array.from(new Map(filteredLogs.map(log => [log.id, log])).values());
+
+        // Log each unique log to console
+        uniqueLogs.forEach(log => this.consoleLogger.logEventToConsole(log));
 
         return uniqueLogs;
     }
-
-
 }
-

@@ -1,16 +1,14 @@
-import { DataTypes, Model, Sequelize } from 'sequelize';
+import { Sequelize, DataTypes, Model } from 'sequelize';
 import { AuditLogInterface } from '../interfaces';
-import { LogLevel } from '../LogLevel';
+import { LogLevelEnum } from '../LogLevel';
 import { SequelizeStorage } from '../storage/SequelizeStorage';
 
-
 // Initialize Sequelize
-const sequelize = new Sequelize('database', 'username', 'password', {
-    host: 'localhost',
-    dialect: 'postgres', // or 'mysql', 'sqlite', etc.
+const sequelize = new Sequelize('mysql://root:password@localhost:3306/audit', {
+    logging: false, // Set to true for SQL query logging
 });
 
-// Define an example target model (e.g., User)
+// Define the User model
 class User extends Model {
     public id!: string;
     public username!: string;
@@ -36,63 +34,7 @@ User.init(
     }
 );
 
-// Define an example target model for a many-to-many relationship (e.g., Role)
-class Role extends Model {
-    public id!: string;
-    public name!: string;
-}
-
-Role.init(
-    {
-        id: {
-            type: DataTypes.UUID,
-            primaryKey: true,
-            defaultValue: DataTypes.UUIDV4,
-            allowNull: false,
-        },
-        name: {
-            type: DataTypes.STRING,
-            allowNull: false,
-        },
-    },
-    {
-        sequelize,
-        modelName: 'Role',
-        freezeTableName: true,
-    }
-);
-
-// Define a join table for the many-to-many relationship
-class UserRole extends Model {
-    public userId!: string;
-    public roleId!: string;
-}
-
-UserRole.init(
-    {
-        userId: {
-            type: DataTypes.UUID,
-            references: {
-                model: User,
-                key: 'id',
-            },
-        },
-        roleId: {
-            type: DataTypes.UUID,
-            references: {
-                model: Role,
-                key: 'id',
-            },
-        },
-    },
-    {
-        sequelize,
-        modelName: 'UserRole',
-        freezeTableName: true,
-    }
-);
-
-// Define your dynamic columns
+// Define dynamic columns for audit logs
 const dynamicColumns = {
     extraInfo: {
         type: DataTypes.JSON,
@@ -100,59 +42,29 @@ const dynamicColumns = {
     },
 };
 
-// Create an instance of SequelizeStorage with associations
+// Create an instance of SequelizeStorage
 const auditStorage = new SequelizeStorage(sequelize, 'AuditLogInterface', dynamicColumns, {
-    user: {
-        relationship: 'belongsTo',
-        targetModel: User,
-        options: { foreignKey: 'userId' },
-    },
-    roles: {
-        relationship: 'belongsToMany',
-        targetModel: Role,
-        options: {
-            through: UserRole,
-            foreignKey: 'userId',
-        },
-    },
+    user: { relationship: 'belongsTo', targetModel: User, options: { foreignKey: 'userId' } },
 });
 
-// Synchronize the tables with the database
+// Sync the database and log an event
 (async () => {
-    await sequelize.sync({ force: true }); // Be cautious with force: true in production!
+    await sequelize.sync({ force: true }); // Use with caution in production!
 
-    // Logging an event
+    // Log an event
     const event: AuditLogInterface = {
         userId: 'some-user-id',
         action: 'LOGIN',
-        logLevel: LogLevel.INFO,
+        logLevel: LogLevelEnum.INFO,
         metadata: { ip: '127.0.0.1' },
         extraInfo: { browser: 'Chrome' },
     };
 
     await auditStorage.logEvent(event);
 
-    // Fetching logs
-    const logs = await auditStorage.fetchLogs({ userId: 'some-user-id' });
-    console.log(logs);
-
-    // Fetching a single log
-    const singleLog = await auditStorage.fetchLog({ id: logs[0].id });
-    console.log(singleLog);
-
-    // Updating a log
-    await auditStorage.updateLog(logs[0].id , { logLevel: 'ERROR' });
-
-    // Deleting a log
-    await auditStorage.deleteLog(logs[0].id);
-
-    // Fetching all logs
-    const allLogs = await auditStorage.fetchAllLogs();
-    console.log(allLogs);
-
-    // Counting logs
-    const logCount = await auditStorage.countLogs({ userId: 'some-user-id' });
-    console.log(`Total logs for user: ${logCount}`);
+    // Fetch logs for a specific user
+    const logs = await auditStorage.fetchLogs({ where: { userId: 'some-user-id' } });
+    console.log('Fetched Logs:', logs);
 
     // Cleanup
     await sequelize.close();

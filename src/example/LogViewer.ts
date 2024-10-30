@@ -2,72 +2,68 @@ import { Sequelize } from "sequelize";
 import { FileStorage } from "../storage/FileStorage";
 import { SequelizeStorage } from "../storage/SequelizeStorage";
 import { LogViewer } from "../LogViewer";
-import { LogLevel } from "../LogLevel";
+import { LogLevelEnum } from "../LogLevel";
 import { AuditLogInterface } from "../interfaces";
-import { ConsoleLogger, Color } from "..";
+import { ConsoleLogger } from "../ConsoleLogger";
+import { MongoStorage } from "../storage/MongoStorage";
 
-const isDevelopment = process.env.NODE_ENV === 'development';
+const main = async () => {
+  const consoleLogger = new ConsoleLogger(true);
+  const tableName = 'AuditLogs';
 
-const sequelizeInstance = new Sequelize('mysql://root:password@localhost:3306/audit', {
-  logging: isDevelopment ? console.log : false,
-});
 
-// Initialize storages
-const fileStorage = new FileStorage('./logs.json', {});
+  //set up the  mongoStorage database
+  const mongoConnectionString = 'mongodb://localhost:27017/auditLogs';
+  const dynamicColumns = {
+    createdAt: { type: Date, default: Date.now },
+  };
+  const mongoStorage = new MongoStorage(mongoConnectionString, tableName, dynamicColumns);
 
-const sequelizeStorage = new SequelizeStorage(sequelizeInstance, 'AuditLogs', {});
 
-// Initialize the logger for console output
-const consoleLogger = new ConsoleLogger(true);
-
-// Initialize the log viewer
-const logViewer = new LogViewer([fileStorage, sequelizeStorage], consoleLogger);
-
-// Fetch logs from both storages and display in the console
-logViewer.viewLogs({ userId: 'user123' }).then((logs) => {
-  //console.log('Logs retrieved:', logs);
-});
+  //set up the  sequelizeStorage database
+  const sequelize = new Sequelize('mysql://root:password@localhost:3306/audit', {
+    logging: false, // Set to true for SQL query logging
+  });
+  const sequelizeStorage = new SequelizeStorage(sequelize, tableName, {});
 
 
 
-// Example usage
-const customColumns = {
-  [LogLevel.INFO]: { label: 'Information', color: Color.MAGENTA }, // Use Color.CYAN
-  [LogLevel.ERROR]: { label: 'Error Occurred', color: Color.RED }, // Use Color.RED
-};
+  const logViewer = new LogViewer([mongoStorage, sequelizeStorage], consoleLogger);
 
-// Create an instance of ConsoleLogger with custom columns
-const consoleLogger2 = new ConsoleLogger(true, customColumns);
-
-// Create sample audit log events
-const logs: AuditLogInterface[] = [
-  {
-    id: 'unique-log-id1',
+  // Log some events
+  const log1: AuditLogInterface = {
+    id: '1',
     userId: 'user1234',
     action: 'User Login',
-    logLevel: LogLevel.INFO,
-    timestamp: new Date(),
-    metadata: {
-      ipAddress: '192.168.1.1',
-    },
-  },
-  {
-    id: 'unique-log-id2',
+    logLevel: LogLevelEnum.INFO,
+    metadata: { ipAddress: '192.168.1.1' },
+  };
+  const log2: AuditLogInterface = {
+    id: '2',
+    userId: 'user1234',
+    action: 'User Logout',
+    logLevel: LogLevelEnum.INFO,
+    metadata: { ipAddress: '192.168.1.1' },
+  };
+  const log3: AuditLogInterface = {
+    id: '3',
     userId: 'user5678',
-    action: 'Failed Login Attempt',
-    logLevel: LogLevel.ERROR,
-    timestamp: new Date(),
-    metadata: {
-      ipAddress: '192.168.1.2',
-      reason: 'Incorrect password',
-    },
-    ns:'dd',
-    dddd: false
-  },
-];
+    action: 'User Login',
+    logLevel: LogLevelEnum.INFO,
+    metadata: { ipAddress: '192.168.1.2' },
+  };
 
-// Log the events using the consoleLogger
+  await sequelizeStorage.logEvent(log1);
+  await mongoStorage.logEvent(log2);
+  await mongoStorage.logEvent(log3);
 
-for (const log of logs) {
-  consoleLogger.logEventToConsole(log);
-}
+  // View logs for user1234
+  const logsForUser1234 = await logViewer.viewLogs({ userId: 'user1234' });
+  console.log('Filtered Logs for user1234:', logsForUser1234);
+
+  // View logs for user5678
+  const logsForUser5678 = await logViewer.viewLogs({ userId: 'user5678' });
+  console.log('Filtered Logs for user5678:', logsForUser5678);
+};
+
+main().catch(console.error);

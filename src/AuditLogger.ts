@@ -1,6 +1,5 @@
 import { ConsoleLogger } from "./ConsoleLogger";
-import { AuditLogInterface, StorageInterface } from "./interfaces";
-
+import { AuditLogInterface, FindParams, StorageInterface } from "./interfaces";
 
 export class AuditLogger {
     private storage: StorageInterface;
@@ -31,14 +30,28 @@ export class AuditLogger {
 
     /**
      * Fetches logs based on filters from the storage.
-     * @param filter - Filter object to narrow down logs (e.g., by userId or action).
+     * @param params - Filter object to narrow down logs (e.g., by userId or action).
      */
-    public async fetchLogs(filter: any): Promise<AuditLogInterface[]> {
+    public async fetchLogs(params: FindParams): Promise<{ data: AuditLogInterface[], total: number, page: number, limit: number }> {
         try {
-            return await this.storage.fetchLogs(filter);
+            return await this.storage.fetchLogs(params);
         } catch (error) {
             console.error(`Failed to fetch logs: ${error}`);
-            return [];
+            return { data: [], total: 0, page: params.page || 1, limit: params.limit || 10 };
+        }
+    }
+
+    /**
+     * Retrieves a single log entry based on the specified filter.
+     * @param filter - Criteria for selecting the log.
+     * @returns The log entry if found, otherwise null.
+     */
+    public async fetchLog(filter: FindParams): Promise<AuditLogInterface | null> {
+        try {
+            return await this.storage.fetchLog(filter);
+        } catch (error) {
+            console.error(`Failed to fetch log: ${error}`);
+            return null;
         }
     }
 
@@ -70,14 +83,56 @@ export class AuditLogger {
     /**
      * Counts logs based on a filter from the storage.
      * @param filter - Filter object to narrow down the logs to count.
-     * @returns - A count of logs matching the filter criteria.
+     * @returns A count of logs matching the filter criteria.
      */
-    public async countLogs(filter: any): Promise<number> {
+    public async countLogs(filter: Record<string, any>): Promise<number> {
         try {
             return await this.storage.countLogs(filter);
         } catch (error) {
             console.error(`Failed to count logs: ${error}`);
             return 0;
         }
+    }
+
+    /**
+     * Deletes logs older than the specified date. Defaults to logs older than 3 months.
+     * @param date Optional date for deletion threshold.
+     */
+    public async deleteLogsOlderThan(date?: Date): Promise<void> {
+        try {
+            await this.storage.deleteLogsOlderThan(date);
+        } catch (error) {
+            console.error(`Failed to delete logs older than ${date}: ${error}`);
+        }
+    }
+
+    /**
+     * Retrieves all records with specified conditions, pagination, ordering, and associations.
+     * @param params Filtering, pagination, ordering, and associations options.
+     * @returns Paginated logs and metadata.
+     */
+    public async findAll(params: FindParams): Promise<{ data: AuditLogInterface[], total: number, page: number, limit: number }> {
+        try {
+            return await this.storage.findAll(params);
+        } catch (error) {
+            console.error(`Failed to find all logs: ${error}`);
+            return { data: [], total: 0, page: params.page || 1, limit: params.limit || 10 };
+        }
+    }
+
+    /**
+     * Returns the name of the associated storage table.
+     * @returns The table name.
+     */
+    public getTableName(): string {
+        return this.storage.getTableName();
+    }
+
+    /**
+     * Returns the storage model instance.
+     * @returns The model instance.
+     */
+    public getModelInstance(): any {
+        return this.storage.getModelInstance();
     }
 }

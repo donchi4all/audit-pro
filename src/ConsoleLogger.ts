@@ -1,4 +1,4 @@
-import { LogLevel } from './LogLevel';
+import { LogLevelEnum } from './LogLevel';
 import { AuditLogInterface } from './interfaces';
 import kleur from 'kleur'; // Import kleur directly
 
@@ -22,19 +22,19 @@ type ColumnConfig = {
 
 export class ConsoleLogger {
     private isEnabled: boolean;
-    private columns: { [key in LogLevel]: ColumnConfig };
-    private defaultColumns: { [key in LogLevel]: ColumnConfig }; // Changed from string index to LogLevel index
+    private columns: { [key in LogLevelEnum]: ColumnConfig };
+    private defaultColumns: { [key in LogLevelEnum]: ColumnConfig }; // Changed from string index to LogLevel index
 
-    constructor(isEnabled: boolean, customColumns?: { [key in LogLevel]?: ColumnConfig }) {
+    constructor(isEnabled: boolean, customColumns?: { [key in LogLevelEnum]?: ColumnConfig }) {
         this.isEnabled = isEnabled;
 
         // Define default columns and colors
         this.defaultColumns = {
-            [LogLevel.INFO]: { label: 'Info', color: Color.CYAN },
-            [LogLevel.WARN]: { label: 'Warning', color: Color.YELLOW },
-            [LogLevel.ERROR]: { label: 'Error', color: Color.RED },
-            [LogLevel.DEBUG]: { label: 'Debug', color: Color.MAGENTA },
-            [LogLevel.CUSTOM]: { label: 'Custom', color: Color.GREEN },
+            [LogLevelEnum.INFO]: { label: 'Info', color: Color.CYAN },
+            [LogLevelEnum.WARN]: { label: 'Warning', color: Color.YELLOW },
+            [LogLevelEnum.ERROR]: { label: 'Error', color: Color.RED },
+            [LogLevelEnum.DEBUG]: { label: 'Debug', color: Color.MAGENTA },
+            [LogLevelEnum.CUSTOM]: { label: 'Custom', color: Color.GREEN },
         };
 
         // Use custom columns if provided, otherwise fall back to default

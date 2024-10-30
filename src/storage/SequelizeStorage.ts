@@ -1,11 +1,13 @@
-import { Sequelize, DataTypes, Model, ModelAttributes, ModelStatic, AssociationOptions } from 'sequelize';
-import { AuditLogInterface, StorageInterface } from '../interfaces';
+import { Sequelize, DataTypes, Model, ModelAttributes, ModelStatic, AssociationOptions, Op, IncludeOptions, OrderItem, WhereOptions } from 'sequelize';
+import { AuditLogInterface, FindParams, StorageInterface } from '../interfaces';
 
 interface AssociationConfig {
     relationship: 'belongsTo' | 'hasMany' | 'hasOne' | 'belongsToMany';
     targetModel: ModelStatic<any>;
     options?: AssociationOptions & { through?: string | ModelStatic<any> };
 }
+
+
 export class SequelizeStorage implements StorageInterface {
     private sequelize: Sequelize;
     private models: { [key: string]: ModelStatic<Model<AuditLogInterface>> } = {};
@@ -111,18 +113,53 @@ export class SequelizeStorage implements StorageInterface {
         await model.create(event);
     }
 
-    public async fetchLogs(filter: any): Promise<AuditLogInterface[]> {
-        const model = this.getModel();
-        await model.sync(); // Sync the table before querying
-        const logs = await model.findAll({ where: filter });
-        return logs.map(log => log.get({ plain: true })) as AuditLogInterface[];
+    private async paginate(
+        model: ModelStatic<Model<AuditLogInterface, AuditLogInterface>>,
+        where: Record<string, any> = {},
+        include?: Array<{ association: string; required?: boolean; attributes?: string[] }>, // Generic include type, could represent Sequelize IncludeOptions or Mongoose populate
+        order: [string, 'asc' | 'desc'][] = [],
+        page: number = 1,
+        limit: number = 10
+    ): Promise<{ data: AuditLogInterface[], total: number, page: number, limit: number }> {
+        const offset = (page - 1) * limit;
+
+        const { rows, count } = await model.findAndCountAll({
+            where,
+            include: include?.map(item => ({
+                association: item.association,
+                required: item.required || false,
+                attributes: item.attributes || undefined,
+            })),
+            order,
+            offset,
+            limit,
+            raw: false, // Ensure rows are Sequelize instances with the .get() method
+        });
+
+
+        return {
+            data: rows.map(row => row instanceof Model ? row.get({ plain: true }) : row),
+            total: count,
+            page,
+            limit
+        };
     }
 
-    public async fetchLog(filter: any): Promise<AuditLogInterface | null> {
+
+
+
+    public async fetchLog({ where, include }: FindParams): Promise<AuditLogInterface | null> {
         const model = this.getModel();
-        await model.sync(); // Sync the table before querying
-        const logEntry = await model.findOne({ where: filter });
-        return logEntry ? logEntry.get({ plain: true }) as AuditLogInterface : null; // Return log entry or null
+        await model.sync(); // Sync the table before logging
+        const logEntry = await model.findOne({
+            where,
+            include: include?.map(item => ({
+                association: item.association,
+                required: item.required || false,
+                attributes: item.attributes || undefined
+            }))
+        });
+        return logEntry ? logEntry.get({ plain: true }) as AuditLogInterface : null;
     }
 
     public async updateLog(id: string, updates: Partial<AuditLogInterface>): Promise<void> {
@@ -137,45 +174,42 @@ export class SequelizeStorage implements StorageInterface {
         await model.destroy({ where: { id } });
     }
 
-    public async fetchAllLogs(): Promise<AuditLogInterface[]> {
+    // Fetch logs with pagination
+    public async fetchLogs({
+        where = {},
+        include = [],
+        page = 1,
+        limit = 10,
+    }: FindParams): Promise<{ data: AuditLogInterface[], total: number, page: number, limit: number }> {
         const model = this.getModel();
-        await model.sync(); // Sync the table before fetching all logs
-        const logs = await model.findAll();
-        return logs.map(log => log.get({ plain: true })) as AuditLogInterface[];
+        return await this.paginate(model, where, include, [], page, limit);
     }
 
-    public async countLogs(filter: any): Promise<number> {
+
+    public async countLogs(filter: Record<string, any>): Promise<number> {
         const model = this.getModel();
-        await model.sync(); // Sync the table before counting
+        await model.sync();
         return await model.count({ where: filter });
     }
 
+    public async deleteLogsOlderThan(date = new Date(new Date().setMonth(new Date().getMonth() - 3))): Promise<void> {
+        const model = this.getModel();
+        await model.sync();
+        await model.destroy({ where: { createdAt: { [Op.lt]: date } } });
+    }
+
+    // Find all logs with associations, order, and pagination
     public async findAll({
         where = {},
         include = [],
-        order = []
-    }: {
-        where?: Record<string, any>;
-        include?: Array<{ association: string; required?: boolean; attributes?: string[] }>; // Make sure to define the type correctly
-        order?: [string, 'asc' | 'desc'][];
-    }): Promise<AuditLogInterface[]> {
+        order = [],
+        page = 1,
+        limit = 10
+    }: FindParams): Promise<{ data: AuditLogInterface[], total: number, page: number, limit: number }> {
         const model = this.getModel();
-        await model.sync(); // Sync the table before querying
 
-        const logs = await model.findAll({
-            where,
-            include: include.map(item => {
-                // Map to association objects and apply attributes if present
-                return {
-                    association: item.association,
-                    required: item.required || false, // Default to false if not specified
-                    attributes: item.attributes || undefined // Use provided attributes or undefined
-                };
-            }),
-            order: order.map(([field, direction]) => [field, direction.toUpperCase()]) // Convert to Sequelize order format
-        });
-
-        return logs.map(log => log.get({ plain: true })) as AuditLogInterface[];
+        return await this.paginate(model, where, include, order, page, limit);
     }
+
 
 }
